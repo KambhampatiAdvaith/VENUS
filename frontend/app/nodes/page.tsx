@@ -96,7 +96,7 @@ export default async function Nodes() {
           ) : null}
         </div>
 
-        <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+        <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-slate-800">

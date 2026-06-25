@@ -227,7 +227,7 @@ export default function Predictions() {
                     </div>
                 </div>
 
-                <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+                <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden overflow-x-auto">
                     <div className="p-6 border-b border-slate-800">
                         <h2 className="text-2xl font-bold">
                             Latest AI Prediction Records

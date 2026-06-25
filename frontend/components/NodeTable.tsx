@@ -26,30 +26,32 @@ export default function NodeTable() {
         Grid Nodes
       </h2>
 
-      <table className="w-full">
-        <thead>
-          <tr className="text-left border-b border-slate-700">
-            <th>ID</th>
-            <th>Voltage</th>
-            <th>Load</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {nodes.map((node) => (
-            <tr
-              key={node.id}
-              className="border-b border-slate-700"
-            >
-              <td>{node.id}</td>
-              <td>{node.voltage}</td>
-              <td>{node.load}</td>
-              <td>{node.status}</td>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="text-left border-b border-slate-700">
+              <th>ID</th>
+              <th>Voltage</th>
+              <th>Load</th>
+              <th>Status</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+
+          <tbody>
+            {nodes.map((node) => (
+              <tr
+                key={node.id}
+                className="border-b border-slate-700"
+              >
+                <td>{node.id}</td>
+                <td>{node.voltage}</td>
+                <td>{node.load}</td>
+                <td>{node.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
+import AutoRefreshControls from "../../components/AutoRefreshControls";
 import AnalyticsChart from "../../components/AnalyticsChart";
 import LoadDistributionChart from "../../components/LoadDistributionChart";
 import {
@@ -9,6 +10,7 @@ import {
   NodeStatus,
   TelemetryRecord,
 } from "../../services/api";
+import { getTelemetryFreshness } from "../../services/telemetryFreshness";
 
 
 const fallbackTelemetry: TelemetryRecord[] = [];
@@ -113,6 +115,13 @@ function getMostCommonFault(faults: FaultRecord[]): string {
 }
 
 
+function getLatestTelemetryTimestamp(telemetry: TelemetryRecord[]): string | undefined {
+  return telemetry
+    .map((item) => item.timestamp)
+    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+}
+
+
 export default async function Analytics() {
   let telemetry = fallbackTelemetry;
   let faults = fallbackFaults;
@@ -144,6 +153,9 @@ export default async function Analytics() {
   const avgVoltage = getAverage(telemetry.map((item) => item.voltage));
   const efficiency = getEfficiency(nodes);
   const mostCommonFault = getMostCommonFault(faults);
+  const telemetryFreshness = getTelemetryFreshness(
+    getLatestTelemetryTimestamp(telemetry)
+  );
 
   const analyticsChartData = nodes.map((node) => ({
     zone: `Substation ${node.node}`,
@@ -162,13 +174,43 @@ export default async function Analytics() {
       <main className="flex-1 p-8">
         <Navbar />
 
-        <h1 className="text-4xl font-bold mb-2">
-          Analytics Dashboard
-        </h1>
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-8">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">
+              Analytics Dashboard
+            </h1>
 
-        <p className="text-slate-400 mb-8">
-          V.E.N.U.S Performance Analysis from real telemetry and fault data
-        </p>
+            <p className="text-slate-400">
+              V.E.N.U.S Performance Analysis from real telemetry and fault data
+            </p>
+          </div>
+
+          <AutoRefreshControls label="Refresh Analytics" />
+        </div>
+
+        <div
+          className={`mb-8 rounded-xl border p-4 ${
+            telemetryFreshness.isStale
+              ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-200"
+              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+          }`}
+        >
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <p className="font-semibold">
+              Last telemetry update: {telemetryFreshness.lastTelemetryUpdate}
+            </p>
+
+            <p>
+              Data age: {telemetryFreshness.dataAge}
+            </p>
+          </div>
+
+          {telemetryFreshness.isStale ? (
+            <p className="mt-2 text-sm">
+              Telemetry data is stale.
+            </p>
+          ) : null}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">

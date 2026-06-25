@@ -39,14 +39,34 @@ export default function Settings() {
 
 
   function saveSettings() {
+    const previousSettings = readSettings();
+
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+
+    if (previousSettings.refreshInterval !== settings.refreshInterval) {
+      setSavedMessage(
+        "Settings saved. Refresh interval changes apply after reloading or navigating to an auto-refresh page."
+      );
+      return;
+    }
+
     setSavedMessage("Settings saved successfully.");
   }
 
 
   function resetSettings() {
+    const previousSettings = readSettings();
+
     setSettings(defaultSettings);
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(defaultSettings));
+
+    if (previousSettings.refreshInterval !== defaultSettings.refreshInterval) {
+      setSavedMessage(
+        "Settings reset. Refresh interval changes apply after reloading or navigating to an auto-refresh page."
+      );
+      return;
+    }
+
     setSavedMessage("Settings reset to default V.E.N.U.S configuration.");
   }
 
@@ -120,7 +140,7 @@ export default function Settings() {
 
           <div>
             <label className="block mb-2 text-slate-300">
-              Theme
+              Theme (future local-only preference)
             </label>
 
             <select
@@ -134,16 +154,20 @@ export default function Settings() {
                 Dark Mode
               </option>
             </select>
+
+            <p className="text-slate-500 text-sm mt-2">
+              Theme selection is saved locally for future UI theme support.
+            </p>
           </div>
 
           <div className="flex items-center justify-between bg-slate-800 p-4 rounded-lg border border-slate-700">
             <div>
               <h2 className="font-semibold">
-                Fault Notifications
+                Fault Notifications (future local-only preference)
               </h2>
 
               <p className="text-slate-400 text-sm">
-                Enable alert indicators for V.E.N.U.S fault events.
+                Saves a local preference for future browser notification support.
               </p>
             </div>
 
