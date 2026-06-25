@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text
 
 from backend.api.database import Base
 
@@ -14,6 +14,10 @@ class Telemetry(Base):
     load = Column("load", Float, nullable=False)
     frequency = Column(Float, nullable=False)
     timestamp = Column(DateTime(timezone=True), nullable=False)
+    edge_anomaly = Column(Boolean, nullable=True, default=False)
+    edge_anomaly_score = Column(Float, nullable=True)
+    edge_model = Column(String(100), nullable=True)
+    edge_processed_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class Fault(Base):

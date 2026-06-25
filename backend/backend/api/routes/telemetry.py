@@ -1,9 +1,9 @@
-import os
 from typing import Any
 
 from fastapi import APIRouter, Query
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
+from backend.api.database import get_engine
 from backend.api.schemas import TelemetryRecord
 
 
@@ -11,17 +11,6 @@ router = APIRouter(
     prefix="/telemetry",
     tags=["Telemetry"],
 )
-
-
-def get_database_url() -> str:
-    return os.getenv(
-        "DATABASE_URL",
-        "postgresql://venus:venus@localhost:5432/venus_db",
-    )
-
-
-def get_engine():
-    return create_engine(get_database_url())
 
 
 @router.get("", response_model=list[TelemetryRecord])

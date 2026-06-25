@@ -1,8 +1,9 @@
-import os
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
+
+from backend.api.database import get_engine
 
 
 OVERLOAD_THRESHOLD = 85.0
@@ -10,17 +11,6 @@ TARGET_MAX_LOAD = 70.0
 DESIRED_SOURCE_LOAD = 75.0
 MAX_LOAD_SHIFT = 15.0
 MIN_LOAD_SHIFT = 5.0
-
-
-def get_database_url() -> str:
-    return os.getenv(
-        "DATABASE_URL",
-        "postgresql://venus:venus@localhost:5432/venus_db",
-    )
-
-
-def get_engine():
-    return create_engine(get_database_url())
 
 
 def normalize_node_name(node: str) -> str:
@@ -157,6 +147,13 @@ def find_overloaded_source(nodes: list[dict[str, Any]]) -> dict[str, Any] | None
     return max(overloaded_nodes, key=lambda node: float(node["load"]))
 
 
+def find_highest_load_source(nodes: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not nodes:
+        return None
+
+    return max(nodes, key=lambda node: float(node["load"]))
+
+
 def find_best_target(
     nodes: list[dict[str, Any]],
     source_node: str,
@@ -172,6 +169,22 @@ def find_best_target(
 
         if is_node_safe_target(node, prediction_map):
             candidates.append(node)
+
+    if not candidates:
+        return None
+
+    return min(candidates, key=lambda node: float(node["load"]))
+
+
+def find_lowest_load_target(
+    nodes: list[dict[str, Any]],
+    source_node: str,
+) -> dict[str, Any] | None:
+    candidates = [
+        node
+        for node in nodes
+        if normalize_node_name(node["substation"]) != source_node
+    ]
 
     if not candidates:
         return None
@@ -196,6 +209,21 @@ def calculate_load_shift(
         return 0.0
 
     return round(shift, 2)
+
+
+def calculate_recommendation_shift(
+    source_load: float,
+    target_load: float,
+) -> float:
+    load_gap = source_load - target_load
+    target_capacity = max(TARGET_MAX_LOAD - target_load, 0.0)
+
+    if load_gap <= 0 or target_capacity <= 0:
+        return 0.0
+
+    shift = min(MAX_LOAD_SHIFT, load_gap / 2, target_capacity)
+
+    return round(max(shift, 0.0), 2)
 
 
 def serialize_action(action: dict[str, Any]) -> dict[str, Any]:
@@ -299,6 +327,89 @@ def store_balancing_action(
         row = connection.execute(text(query), params).mappings().first()
 
     return serialize_action(dict(row))
+
+
+def create_pending_recommendation() -> dict[str, Any]:
+    nodes = get_latest_node_states()
+
+    if len(nodes) < 2:
+        return {
+            "status": "no_action",
+            "message": "At least two telemetry records are required to create a recommendation.",
+            "action": None,
+        }
+
+    source = find_highest_load_source(nodes)
+
+    if not source:
+        return {
+            "status": "no_action",
+            "message": "No telemetry records available.",
+            "action": None,
+        }
+
+    source_node = normalize_node_name(source["substation"])
+    target = find_lowest_load_target(nodes, source_node)
+
+    if not target:
+        return {
+            "status": "no_action",
+            "message": "No target node was available for a recommendation.",
+            "action": None,
+        }
+
+    source_load_before = float(source["load"])
+    target_load_before = float(target["load"])
+    load_shifted = calculate_recommendation_shift(
+        source_load=source_load_before,
+        target_load=target_load_before,
+    )
+
+    if load_shifted <= 0:
+        return {
+            "status": "no_action",
+            "message": "Latest telemetry snapshot did not expose enough capacity to recommend a load shift.",
+            "action": None,
+        }
+
+    source_temperature = (
+        float(source["temperature"]) if source.get("temperature") is not None else None
+    )
+    source_load_after = round(source_load_before - load_shifted, 2)
+    target_load_after = round(target_load_before + load_shifted, 2)
+    risk_before = calculate_risk_score(source_load_before, source_temperature)
+    risk_after = calculate_risk_score(source_load_after, source_temperature)
+    target_node = normalize_node_name(target["substation"])
+
+    action = store_balancing_action(
+        source_node=source_node,
+        target_node=target_node,
+        load_shifted=load_shifted,
+        trigger_reason=(
+            f"Latest telemetry snapshot identified Substation {source_node} as the "
+            f"highest-load node at {source_load_before}% and Substation {target_node} "
+            f"as the lowest-load node at {target_load_before}%."
+        ),
+        action_status="pending",
+        source_load_before=source_load_before,
+        source_load_after=source_load_after,
+        target_load_before=target_load_before,
+        target_load_after=target_load_after,
+        risk_before=risk_before,
+        risk_after=risk_after,
+        effectiveness="pending",
+        execution_mode="approval",
+        decision_notes=(
+            "Created from the latest telemetry snapshot for operator review "
+            "without invoking the autonomous optimizer execution path."
+        ),
+    )
+
+    return {
+        "status": "success",
+        "message": "Load balancing recommendation created from the latest telemetry snapshot.",
+        "action": action,
+    }
 
 
 def execute_load_balancing(

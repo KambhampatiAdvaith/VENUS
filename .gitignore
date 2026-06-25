@@ -1,7 +1,8 @@
 # Backend
 backend/venv/
-backend/__pycache__/
-backend/*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
 
 # Frontend
 frontend/node_modules/

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     api,
@@ -45,9 +45,10 @@ export default function LoadBalancingControls() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [lastRefreshedAt, setLastRefreshedAt] = useState("");
 
 
-    async function loadPendingActions() {
+    const loadPendingActions = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
@@ -55,13 +56,18 @@ export default function LoadBalancingControls() {
             const actions = await api.getPendingLoadBalancingActions(10);
 
             setPendingActions(actions);
+            setLastRefreshedAt(new Date().toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+            }));
         } catch (currentError) {
             console.error(currentError);
             setError("Failed to load pending recommendations.");
         } finally {
             setLoading(false);
         }
-    }
+    }, []);
 
 
     async function createRecommendation() {
@@ -145,8 +151,17 @@ export default function LoadBalancingControls() {
 
 
     useEffect(() => {
-        void loadPendingActions();
-    }, []);
+        const timer = window.setTimeout(() => {
+            void loadPendingActions();
+        }, 0);
+
+        window.addEventListener("venus-load-balancing-refresh", loadPendingActions);
+
+        return () => {
+            window.clearTimeout(timer);
+            window.removeEventListener("venus-load-balancing-refresh", loadPendingActions);
+        };
+    }, [loadPendingActions]);
 
 
     return (
@@ -183,6 +198,10 @@ export default function LoadBalancingControls() {
                         </button>
                     </div>
                 </div>
+
+                <p className="mt-3 text-sm text-slate-400">
+                    Pending actions last refreshed at: {lastRefreshedAt || "Loading..."}
+                </p>
 
                 {message ? (
                     <div className="mt-4 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-green-300 text-sm">

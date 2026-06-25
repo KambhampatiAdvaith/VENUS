@@ -3,25 +3,12 @@
 import { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
-
-
-const SETTINGS_STORAGE_KEY = "venus_settings";
-
-
-type VenusSettings = {
-  refreshInterval: string;
-  alertThreshold: number;
-  theme: string;
-  notificationsEnabled: boolean;
-};
-
-
-const defaultSettings: VenusSettings = {
-  refreshInterval: "5",
-  alertThreshold: 80,
-  theme: "dark",
-  notificationsEnabled: true,
-};
+import {
+  defaultSettings,
+  readSettings,
+  SETTINGS_STORAGE_KEY,
+  VenusSettings,
+} from "../../services/settings";
 
 
 export default function Settings() {
@@ -30,11 +17,11 @@ export default function Settings() {
 
 
   useEffect(() => {
-    const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    const timer = window.setTimeout(() => {
+      setSettings(readSettings());
+    }, 0);
 
-    if (storedSettings) {
-      setSettings(JSON.parse(storedSettings));
-    }
+    return () => window.clearTimeout(timer);
   }, []);
 
 
@@ -72,11 +59,11 @@ export default function Settings() {
         <Navbar />
 
         <h1 className="text-4xl font-bold mb-2">
-          Settings
+          Dashboard Preferences
         </h1>
 
         <p className="text-slate-400 mb-8">
-          Configure V.E.N.U.S dashboard preferences
+          Configure local browser preferences for dashboard polling and frontend load alerts.
         </p>
 
         <div className="bg-slate-900 rounded-xl p-6 space-y-6 border border-slate-800">
@@ -127,7 +114,7 @@ export default function Settings() {
             />
 
             <p className="text-slate-500 text-sm mt-2">
-              Alerts are highlighted when load crosses this percentage.
+              Load balancing cards use this local threshold to mark nodes as overloaded when backend status does not provide a threshold.
             </p>
           </div>
 

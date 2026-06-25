@@ -1,25 +1,37 @@
-import os
 from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Query
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
-from backend.optimization.load_balancer import execute_load_balancing
+from backend.api.database import get_engine
+from backend.optimization.load_balancer import (
+    create_pending_recommendation,
+    execute_load_balancing,
+)
 
 
 router = APIRouter()
 
 
-def get_database_url() -> str:
-    return os.getenv(
-        "DATABASE_URL",
-        "postgresql://venus:venus@localhost:5432/venus_db",
-    )
-
-
-def get_engine():
-    return create_engine(get_database_url())
+ACTION_COLUMNS = """
+    id,
+    source_node,
+    target_node,
+    load_shifted,
+    trigger_reason,
+    action_status,
+    source_load_before,
+    source_load_after,
+    target_load_before,
+    target_load_after,
+    risk_before,
+    risk_after,
+    effectiveness,
+    execution_mode,
+    decision_notes,
+    created_at
+"""
 
 
 def serialize_action(action: dict[str, Any]) -> dict[str, Any]:
@@ -27,6 +39,10 @@ def serialize_action(action: dict[str, Any]) -> dict[str, Any]:
         action["created_at"] = action["created_at"].isoformat()
 
     return action
+
+
+def normalize_action_status(action_status: str | None) -> str:
+    return (action_status or "").strip().lower()
 
 
 def calculate_percentage_change(before: float, after: float) -> float:
@@ -187,24 +203,9 @@ def build_decision_log_entry(action: dict[str, Any]) -> dict[str, Any]:
 def get_recent_actions(limit: int) -> list[dict[str, Any]]:
     engine = get_engine()
 
-    query = """
+    query = f"""
         SELECT
-            id,
-            source_node,
-            target_node,
-            load_shifted,
-            trigger_reason,
-            action_status,
-            source_load_before,
-            source_load_after,
-            target_load_before,
-            target_load_after,
-            risk_before,
-            risk_after,
-            effectiveness,
-            execution_mode,
-            decision_notes,
-            created_at
+            {ACTION_COLUMNS}
         FROM load_balancing_actions
         ORDER BY created_at DESC
         LIMIT :limit
@@ -219,26 +220,11 @@ def get_recent_actions(limit: int) -> list[dict[str, Any]]:
 def get_executed_actions(limit: int) -> list[dict[str, Any]]:
     engine = get_engine()
 
-    query = """
+    query = f"""
         SELECT
-            id,
-            source_node,
-            target_node,
-            load_shifted,
-            trigger_reason,
-            action_status,
-            source_load_before,
-            source_load_after,
-            target_load_before,
-            target_load_after,
-            risk_before,
-            risk_after,
-            effectiveness,
-            execution_mode,
-            decision_notes,
-            created_at
+            {ACTION_COLUMNS}
         FROM load_balancing_actions
-        WHERE action_status = 'executed'
+        WHERE LOWER(TRIM(action_status)) = 'executed'
         ORDER BY created_at DESC
         LIMIT :limit
     """
@@ -307,12 +293,7 @@ def create_load_balancing_recommendation():
     This supports supervised approval mode:
     Prediction/Overload -> Recommendation -> Pending Approval.
     """
-    result = execute_load_balancing(
-        execution_mode="approval",
-        dry_run=False,
-    )
-
-    return result
+    return create_pending_recommendation()
 
 
 @router.get("/load-balancing/pending")
@@ -324,26 +305,11 @@ def get_pending_load_balancing_actions(
     """
     engine = get_engine()
 
-    query = """
+    query = f"""
         SELECT
-            id,
-            source_node,
-            target_node,
-            load_shifted,
-            trigger_reason,
-            action_status,
-            source_load_before,
-            source_load_after,
-            target_load_before,
-            target_load_after,
-            risk_before,
-            risk_after,
-            effectiveness,
-            execution_mode,
-            decision_notes,
-            created_at
+            {ACTION_COLUMNS}
         FROM load_balancing_actions
-        WHERE action_status = 'pending'
+        WHERE LOWER(TRIM(action_status)) = 'pending'
         ORDER BY created_at DESC
         LIMIT :limit
     """
@@ -365,24 +331,9 @@ def approve_load_balancing_action(action_id: int):
     """
     engine = get_engine()
 
-    select_query = """
+    select_query = f"""
         SELECT
-            id,
-            source_node,
-            target_node,
-            load_shifted,
-            trigger_reason,
-            action_status,
-            source_load_before,
-            source_load_after,
-            target_load_before,
-            target_load_after,
-            risk_before,
-            risk_after,
-            effectiveness,
-            execution_mode,
-            decision_notes,
-            created_at
+            {ACTION_COLUMNS}
         FROM load_balancing_actions
         WHERE id = :action_id
         LIMIT 1
@@ -396,7 +347,7 @@ def approve_load_balancing_action(action_id: int):
                 WHEN risk_after < risk_before THEN 'successful'
                 ELSE 'ineffective'
             END,
-            decision_notes = decision_notes || ' Operator approved and executed this recommendation.'
+            decision_notes = COALESCE(decision_notes, '') || ' Operator approved and executed this recommendation.'
         WHERE id = :action_id
         RETURNING
             id,
@@ -432,7 +383,7 @@ def approve_load_balancing_action(action_id: int):
 
         existing_action = dict(existing)
 
-        if existing_action["action_status"] != "pending":
+        if normalize_action_status(existing_action["action_status"]) != "pending":
             return {
                 "status": "invalid_state",
                 "message": (
@@ -461,24 +412,9 @@ def reject_load_balancing_action(action_id: int):
     """
     engine = get_engine()
 
-    select_query = """
+    select_query = f"""
         SELECT
-            id,
-            source_node,
-            target_node,
-            load_shifted,
-            trigger_reason,
-            action_status,
-            source_load_before,
-            source_load_after,
-            target_load_before,
-            target_load_after,
-            risk_before,
-            risk_after,
-            effectiveness,
-            execution_mode,
-            decision_notes,
-            created_at
+            {ACTION_COLUMNS}
         FROM load_balancing_actions
         WHERE id = :action_id
         LIMIT 1
@@ -489,7 +425,7 @@ def reject_load_balancing_action(action_id: int):
         SET
             action_status = 'rejected',
             effectiveness = 'rejected',
-            decision_notes = decision_notes || ' Operator rejected this recommendation.'
+            decision_notes = COALESCE(decision_notes, '') || ' Operator rejected this recommendation.'
         WHERE id = :action_id
         RETURNING
             id,
@@ -525,7 +461,7 @@ def reject_load_balancing_action(action_id: int):
 
         existing_action = dict(existing)
 
-        if existing_action["action_status"] != "pending":
+        if normalize_action_status(existing_action["action_status"]) != "pending":
             return {
                 "status": "invalid_state",
                 "message": (

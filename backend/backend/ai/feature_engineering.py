@@ -1,8 +1,8 @@
-import os
 from typing import Tuple
 
 import pandas as pd
-from sqlalchemy import create_engine
+
+from backend.api.database import get_engine
 
 
 FEATURE_COLUMNS = [
@@ -20,17 +20,6 @@ FAULT_LABELS = [
     "load_surge",
     "frequency_deviation",
 ]
-
-
-def get_database_url() -> str:
-    return os.getenv(
-        "DATABASE_URL",
-        "postgresql://venus:venus@localhost:5432/venus_db",
-    )
-
-
-def get_engine():
-    return create_engine(get_database_url())
 
 
 def normalize_numeric_columns(dataframe: pd.DataFrame) -> pd.DataFrame:

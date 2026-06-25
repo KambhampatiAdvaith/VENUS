@@ -1,29 +1,19 @@
 import asyncio
 import os
 import random
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
+from backend.api.database import get_engine
 from backend.edge.edge_anomaly_detector import edge_detector
 
 
 router = APIRouter()
 
 _simulator_started = False
-
-
-def get_database_url() -> str:
-    return os.getenv(
-        "DATABASE_URL",
-        "postgresql://venus:venus@localhost:5432/venus_db",
-    )
-
-
-def get_engine():
-    return create_engine(get_database_url())
 
 
 def build_normal_telemetry() -> list[dict[str, Any]]:
@@ -162,7 +152,7 @@ def insert_telemetry(readings: list[dict[str, Any]]) -> list[dict[str, Any]]:
         )
     """
 
-    timestamp = datetime.utcnow()
+    timestamp = datetime.now(UTC)
     rows = apply_edge_anomaly_detection(readings, timestamp)
 
     with engine.begin() as connection:
@@ -197,12 +187,6 @@ async def telemetry_simulation_loop() -> None:
 
 def start_telemetry_simulator() -> None:
     global _simulator_started
-
-    enabled = os.getenv("TELEMETRY_SIMULATOR_ENABLED", "false").lower()
-
-    if enabled not in {"true", "1", "yes"}:
-        print("[telemetry-simulator] Disabled.")
-        return
 
     if _simulator_started:
         return

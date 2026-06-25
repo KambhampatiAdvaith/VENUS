@@ -15,13 +15,22 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "venus")
 POSTGRES_DB = os.getenv("POSTGRES_DB", "venus_db")
 
 
-DATABASE_URL = (
-    f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
-    f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-)
+def get_database_url() -> str:
+    database_url = os.getenv("DATABASE_URL")
+
+    if database_url:
+        return database_url
+
+    return (
+        f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
+        f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    )
 
 
-engine = create_engine(DATABASE_URL)
+DATABASE_URL = get_database_url()
+
+
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 SessionLocal = sessionmaker(
     autocommit=False,
@@ -30,6 +39,10 @@ SessionLocal = sessionmaker(
 )
 
 Base = declarative_base()
+
+
+def get_engine():
+    return engine
 
 
 def get_db():
