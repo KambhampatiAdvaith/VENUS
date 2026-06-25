@@ -5,6 +5,8 @@ import AutoRefreshControls from "../../components/AutoRefreshControls";
 import { api, NodeStatus } from "../../services/api";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
 
+export const dynamic = "force-dynamic";
+
 
 const fallbackNodes: NodeStatus[] = [];
 

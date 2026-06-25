@@ -4,6 +4,8 @@ import StatusBadge from "../../components/StatusBadge";
 import AutoRefreshControls from "../../components/AutoRefreshControls";
 import { api, FaultRecord } from "../../services/api";
 
+export const dynamic = "force-dynamic";
+
 
 const fallbackFaults: FaultRecord[] = [];
 

@@ -17,6 +17,8 @@ import {
   LoadBalancingSummary,
 } from "../../services/api";
 
+export const dynamic = "force-dynamic";
+
 
 const fallbackMetrics: DashboardMetrics = {
   total_nodes: 3,

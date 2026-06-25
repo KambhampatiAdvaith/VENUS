@@ -6,6 +6,8 @@ import LoadBalancingStatusSummary from "../../components/LoadBalancingStatusSumm
 import { api, NodeStatus, TelemetryRecord } from "../../services/api";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
 
+export const dynamic = "force-dynamic";
+
 
 const fallbackNodes: NodeStatus[] = [];
 const fallbackTelemetry: TelemetryRecord[] = [];

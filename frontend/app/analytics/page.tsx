@@ -12,6 +12,8 @@ import {
 } from "../../services/api";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
 
+export const dynamic = "force-dynamic";
+
 
 const fallbackTelemetry: TelemetryRecord[] = [];
 const fallbackFaults: FaultRecord[] = [];
