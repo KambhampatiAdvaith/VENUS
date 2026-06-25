@@ -1,12 +1,12 @@
 from pathlib import Path
 
 import joblib
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
 from backend.ai.anomaly_detection import calculate_anomaly_score
+from backend.api.database import get_engine
 from backend.ai.feature_engineering import (
     FEATURE_COLUMNS,
-    get_database_url,
     load_latest_telemetry_per_substation,
 )
 
@@ -126,7 +126,7 @@ def create_ai_alert_if_needed(
 
 
 def predict_latest():
-    engine = create_engine(get_database_url())
+    engine = get_engine()
     ensure_predictions_table(engine)
 
     anomaly_model, fault_model, label_encoder = load_models()

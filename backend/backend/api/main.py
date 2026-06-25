@@ -1,5 +1,6 @@
 import asyncio
 import os
+from contextlib import suppress
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -23,6 +24,22 @@ load_dotenv()
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 
+def is_enabled(env_var_name: str, default: str = "false") -> bool:
+    return os.getenv(env_var_name, default).strip().lower() in {"true", "1", "yes"}
+
+
+def get_allowed_origins() -> list[str]:
+    origins = [
+        FRONTEND_URL.strip(),
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+    ]
+
+    return [origin for origin in dict.fromkeys(origins) if origin]
+
+
 app = FastAPI(
     title="V.E.N.U.S. API",
     description="Backend APIs for Volt Edge Network Utility System",
@@ -32,11 +49,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        FRONTEND_URL,
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -53,17 +66,32 @@ app.include_router(telemetry_simulator_router)
 
 
 @app.on_event("startup")
-def startup_event():
-    enable_startup_simulator = os.getenv(
-        "ENABLE_STARTUP_TELEMETRY_SIMULATOR",
-        "false",
-    ).lower() == "true"
-
-    if enable_startup_simulator:
+async def startup_event():
+    if is_enabled("ENABLE_STARTUP_TELEMETRY_SIMULATOR"):
         print("[telemetry-simulator] Startup simulator enabled.")
         start_telemetry_simulator()
     else:
         print("[telemetry-simulator] Startup simulator disabled for edge-cloud demo.")
+
+    if is_enabled("ENABLE_AI_PREDICTION_LOOP"):
+        app.state.ai_prediction_task = asyncio.create_task(run_ai_prediction_loop())
+        print("[ai-prediction-loop] Started.")
+    else:
+        app.state.ai_prediction_task = None
+        print("[ai-prediction-loop] Disabled by default. Run predictions manually.")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    task = getattr(app.state, "ai_prediction_task", None)
+
+    if task is None:
+        return
+
+    task.cancel()
+
+    with suppress(asyncio.CancelledError):
+        await task
 
 
 @app.get("/")
@@ -77,10 +105,11 @@ def root():
 
 @app.get("/health")
 def health_check():
+    db_generator = get_db()
+
     try:
-        db = next(get_db())
+        db = next(db_generator)
         db.execute(text("SELECT 1"))
-        db.close()
 
         return {
             "status": "healthy",
@@ -93,6 +122,8 @@ def health_check():
             "database": "disconnected",
             "error": str(error),
         }
+    finally:
+        db_generator.close()
 
 
 async def run_ai_prediction_loop():

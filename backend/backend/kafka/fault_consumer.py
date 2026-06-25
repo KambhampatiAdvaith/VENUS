@@ -56,25 +56,45 @@ def normalize_fault_data(kafka_message: dict) -> dict:
 
 
 def start_fault_consumer() -> None:
-    consumer = create_consumer()
+    while True:
+        consumer = None
 
-    print("[CONSUMER] Waiting for fault messages...")
-
-    for message in consumer:
         try:
-            fault_data = normalize_fault_data(message.value)
+            consumer = create_consumer()
 
-            insert_fault(fault_data)
+            print("[CONSUMER] Waiting for fault messages...")
 
-            print(
-                f"[CONSUMER] Fault processed | "
-                f"substation={fault_data.get('substation')} | "
-                f"fault_type={fault_data.get('fault_type')} | "
-                f"offset={message.offset}"
-            )
+            for message in consumer:
+                try:
+                    fault_data = normalize_fault_data(message.value)
+
+                    insert_fault(fault_data)
+
+                    print(
+                        f"[CONSUMER] Fault processed | "
+                        f"substation={fault_data.get('substation')} | "
+                        f"fault_type={fault_data.get('fault_type')} | "
+                        f"offset={message.offset}"
+                    )
+
+                except Exception as error:
+                    print(f"[CONSUMER] Failed to process fault message: {error}")
+
+        except KeyboardInterrupt:
+            print("[KAFKA] Fault consumer stopped by user.")
+            break
 
         except Exception as error:
-            print(f"[CONSUMER] Failed to process fault message: {error}")
+            print(f"[KAFKA] Fault consumer crashed: {error}")
+            print("[KAFKA] Restarting consumer in 3 seconds...")
+            time.sleep(3)
+
+        finally:
+            if consumer is not None:
+                try:
+                    consumer.close()
+                except Exception:
+                    pass
 
 
 if __name__ == "__main__":

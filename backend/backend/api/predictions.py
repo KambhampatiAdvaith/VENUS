@@ -1,20 +1,13 @@
-import os
 from datetime import datetime
 
 from fastapi import APIRouter, Query
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
 from backend.ai.predict import predict_latest
+from backend.api.database import get_engine
 
 
 router = APIRouter()
-
-
-def get_database_url() -> str:
-    return os.getenv(
-        "DATABASE_URL",
-        "postgresql://venus:venus@localhost:5432/venus_db",
-    )
 
 
 def serialize_row(row):
@@ -28,7 +21,7 @@ def serialize_row(row):
 
 @router.get("/predictions")
 def get_predictions(limit: int = Query(default=50, ge=1, le=500)):
-    engine = create_engine(get_database_url())
+    engine = get_engine()
 
     query = """
         SELECT
@@ -63,7 +56,7 @@ def run_predictions():
 
 @router.get("/predictions/metrics")
 def get_prediction_metrics():
-    engine = create_engine(get_database_url())
+    engine = get_engine()
 
     query = """
         SELECT
