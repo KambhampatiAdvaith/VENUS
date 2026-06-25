@@ -18,6 +18,7 @@ ANOMALY_MODEL_PATH = MODEL_DIR / "anomaly_isolation_forest.joblib"
 LABEL_ENCODER_PATH = MODEL_DIR / "label_encoder.joblib"
 
 ALERT_CONFIDENCE_THRESHOLD = 0.8
+RECENT_FAULT_WINDOW_MINUTES = 10
 
 
 def load_models():
@@ -109,6 +110,15 @@ def create_ai_alert_if_needed(
 
     severity = "critical" if probability >= 0.9 or anomaly_score >= 0.8 else "high"
 
+    recent_duplicate_sql = """
+        SELECT 1
+        FROM faults
+        WHERE substation = :substation
+          AND fault_type = :fault_type
+          AND timestamp >= NOW() - (:recent_fault_window_minutes * INTERVAL '1 minute')
+        LIMIT 1
+    """
+
     insert_sql = """
         INSERT INTO faults (
             substation,
@@ -125,6 +135,18 @@ def create_ai_alert_if_needed(
     """
 
     with engine.begin() as connection:
+        recent_duplicate = connection.execute(
+            text(recent_duplicate_sql),
+            {
+                "substation": substation,
+                "fault_type": fault_type,
+                "recent_fault_window_minutes": RECENT_FAULT_WINDOW_MINUTES,
+            },
+        ).scalar()
+
+        if recent_duplicate:
+            return
+
         connection.execute(
             text(insert_sql),
             {

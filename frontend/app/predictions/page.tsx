@@ -43,11 +43,15 @@ function getProbabilityColor(probability: number): string {
 
 
 function getRiskLevel(prediction: PredictionRecord): string {
+    if (prediction.anomaly) {
+        return "High";
+    }
+
     if (prediction.predicted_fault === "normal") {
         return "Low";
     }
 
-    if (prediction.probability >= 0.8 || prediction.anomaly) {
+    if (prediction.probability >= 0.8) {
         return "High";
     }
 
@@ -130,7 +134,8 @@ export default function Predictions() {
 
 
     const predictedFaults = predictions.filter(
-        (prediction) => prediction.predicted_fault !== "normal"
+        (prediction) =>
+            prediction.predicted_fault !== "normal" || prediction.anomaly
     );
 
     const averageRiskScore =
@@ -143,8 +148,9 @@ export default function Predictions() {
 
     const highRiskCount = predictions.filter(
         (prediction) =>
-            prediction.predicted_fault !== "normal" &&
-            (prediction.probability >= 0.8 || prediction.anomaly)
+            prediction.anomaly ||
+            (prediction.predicted_fault !== "normal" &&
+                prediction.probability >= 0.8)
     ).length;
 
     const systemRiskLevel =
