@@ -47,7 +47,7 @@ export default function Sidebar() {
 
         <Link
           href="/predictions"
-          className="block px-4 py-3 rounded-lg hover:bg-blue-600 transition"
+          className={linkClass("/predictions")}
         >
           AI Predictions
         </Link>
