@@ -4,6 +4,8 @@ import LoadChart, { LoadChartData } from "../../components/LoadChart";
 import Navbar from "../../components/Navbar";
 import LoadBalancingControls from "../../components/LoadBalancingControls";
 import DecisionLogPanel from "../../components/DecisionLogPanel";
+import AutoRefreshControls from "../../components/AutoRefreshControls";
+import { getTelemetryFreshness } from "../../services/telemetryFreshness";
 import {
   api,
   DashboardMetrics,
@@ -257,6 +259,7 @@ export default async function Dashboard() {
   }
 
   const loadChartData = buildLoadChartData(telemetry);
+  const telemetryFreshness = getTelemetryFreshness(telemetry[0]?.timestamp);
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
@@ -265,14 +268,42 @@ export default async function Dashboard() {
       <main className="flex-1 p-8">
         <Navbar />
 
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">
-            Dashboard
-          </h1>
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-8">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">
+              Dashboard
+            </h1>
 
-          <p className="text-slate-400">
-            V.E.N.U.S Monitoring & Load Management System
-          </p>
+            <p className="text-slate-400">
+              V.E.N.U.S Monitoring & Load Management System
+            </p>
+          </div>
+
+          <AutoRefreshControls label="Refresh Dashboard" />
+        </div>
+
+        <div
+          className={`mb-8 rounded-xl border p-4 ${
+            telemetryFreshness.isStale
+              ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-200"
+              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+          }`}
+        >
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <p className="font-semibold">
+              Last telemetry update: {telemetryFreshness.lastTelemetryUpdate}
+            </p>
+
+            <p>
+              Data age: {telemetryFreshness.dataAge}
+            </p>
+          </div>
+
+          {telemetryFreshness.isStale ? (
+            <p className="mt-2 text-sm">
+              Telemetry data is stale.
+            </p>
+          ) : null}
         </div>
 
         {/* Main Metrics */}

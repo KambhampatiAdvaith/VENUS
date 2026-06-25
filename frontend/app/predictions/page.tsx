@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import { api, PredictionRecord } from "../../services/api";
+import { getRefreshIntervalMs } from "../../services/settings";
 
 
 function formatFaultName(fault: string): string {
@@ -74,10 +75,11 @@ function getRiskColor(riskLevel: string): string {
 export default function Predictions() {
     const [predictions, setPredictions] = useState<PredictionRecord[]>([]);
     const [loading, setLoading] = useState(true);
+    const [running, setRunning] = useState(false);
     const [lastUpdated, setLastUpdated] = useState("");
 
 
-    async function loadPredictions() {
+    const loadPredictions = useCallback(async () => {
         try {
             const predictionRecords = await api.getPredictions(50);
             setPredictions(predictionRecords);
@@ -93,18 +95,38 @@ export default function Predictions() {
         } finally {
             setLoading(false);
         }
+    }, []);
+
+
+    async function runPredictionCycle() {
+        try {
+            setRunning(true);
+            setLoading(true);
+            await api.runPredictions();
+            await loadPredictions();
+        } catch (error) {
+            console.error("Failed to run AI prediction cycle:", error);
+            setLoading(false);
+        } finally {
+            setRunning(false);
+        }
     }
 
 
     useEffect(() => {
-        loadPredictions();
+        const timer = window.setTimeout(() => {
+            void loadPredictions();
+        }, 0);
 
         const interval = setInterval(() => {
-            loadPredictions();
-        }, 10000);
+            void loadPredictions();
+        }, getRefreshIntervalMs());
 
-        return () => clearInterval(interval);
-    }, []);
+        return () => {
+            window.clearTimeout(timer);
+            clearInterval(interval);
+        };
+    }, [loadPredictions]);
 
 
     const predictedFaults = predictions.filter(
@@ -154,10 +176,11 @@ export default function Predictions() {
                     <div className="flex flex-col items-start md:items-end gap-2">
                         <button
                             type="button"
-                            onClick={loadPredictions}
+                            onClick={runPredictionCycle}
+                            disabled={running}
                             className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold transition"
                         >
-                            Refresh Now
+                            {running ? "Running..." : "Refresh Now"}
                         </button>
 
                         <p className="text-slate-400 text-sm">

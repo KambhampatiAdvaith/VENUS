@@ -1,6 +1,8 @@
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
+import AutoRefreshControls from "../../components/AutoRefreshControls";
 import { api, TelemetryRecord } from "../../services/api";
+import { getTelemetryFreshness } from "../../services/telemetryFreshness";
 
 
 const fallbackTelemetry: TelemetryRecord[] = [];
@@ -20,6 +22,8 @@ export default async function Telemetry() {
     console.error("Failed to fetch telemetry data:", error);
   }
 
+  const telemetryFreshness = getTelemetryFreshness(telemetryData[0]?.timestamp);
+
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
       <Sidebar />
@@ -27,13 +31,43 @@ export default async function Telemetry() {
       <main className="flex-1 p-8">
         <Navbar />
 
-        <h1 className="text-4xl font-bold mb-2">
-          Telemetry
-        </h1>
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-8">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">
+              Telemetry
+            </h1>
 
-        <p className="text-slate-400 mb-8">
-          Real-time V.E.N.U.S telemetry monitoring
-        </p>
+            <p className="text-slate-400">
+              V.E.N.U.S telemetry monitoring based on latest backend records
+            </p>
+          </div>
+
+          <AutoRefreshControls label="Refresh Telemetry" />
+        </div>
+
+        <div
+          className={`mb-8 rounded-xl border p-4 ${
+            telemetryFreshness.isStale
+              ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-200"
+              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+          }`}
+        >
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <p className="font-semibold">
+              Last telemetry update: {telemetryFreshness.lastTelemetryUpdate}
+            </p>
+
+            <p>
+              Data age: {telemetryFreshness.dataAge}
+            </p>
+          </div>
+
+          {telemetryFreshness.isStale ? (
+            <p className="mt-2 text-sm">
+              Telemetry data is stale.
+            </p>
+          ) : null}
+        </div>
 
         <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
           <table className="w-full border-collapse">

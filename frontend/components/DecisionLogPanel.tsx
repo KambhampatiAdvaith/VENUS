@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
     api,
     LoadBalancingDecisionLog,
@@ -60,14 +61,16 @@ function getStatusColor(status: string): string {
 
 
 export default function DecisionLogPanel() {
+    const router = useRouter();
     const [decisionLogs, setDecisionLogs] = useState<LoadBalancingDecisionLog[]>([]);
     const [summary, setSummary] =
         useState<LoadBalancingDecisionLogSummary>(fallbackSummary);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [lastRefreshedAt, setLastRefreshedAt] = useState("");
 
 
-    async function loadDecisionLogs() {
+    const loadDecisionLogs = useCallback(async (refreshRelatedData = false) => {
         try {
             setLoading(true);
             setError(null);
@@ -79,18 +82,32 @@ export default function DecisionLogPanel() {
 
             setDecisionLogs(logsResponse);
             setSummary(summaryResponse);
+            setLastRefreshedAt(new Date().toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+            }));
+
+            if (refreshRelatedData) {
+                window.dispatchEvent(new Event("venus-load-balancing-refresh"));
+                router.refresh();
+            }
         } catch (currentError) {
             console.error(currentError);
             setError("Failed to load decision audit log.");
         } finally {
             setLoading(false);
         }
-    }
+    }, [router]);
 
 
     useEffect(() => {
-        void loadDecisionLogs();
-    }, []);
+        const timer = window.setTimeout(() => {
+            void loadDecisionLogs();
+        }, 0);
+
+        return () => window.clearTimeout(timer);
+    }, [loadDecisionLogs]);
 
 
     return (
@@ -108,13 +125,17 @@ export default function DecisionLogPanel() {
 
                 <button
                     type="button"
-                    onClick={loadDecisionLogs}
+                    onClick={() => loadDecisionLogs(true)}
                     disabled={loading}
                     className="rounded-lg bg-slate-800 hover:bg-slate-700 disabled:bg-slate-700 disabled:text-slate-400 px-4 py-2 font-semibold transition"
                 >
                     {loading ? "Refreshing..." : "Refresh Audit Log"}
                 </button>
             </div>
+
+            <p className="mb-5 text-sm text-slate-400">
+                Last refreshed at: {lastRefreshedAt || "Loading..."}
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                 <div className="bg-slate-900 rounded-xl p-6 border border-blue-500/40">
