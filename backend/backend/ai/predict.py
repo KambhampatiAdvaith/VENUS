@@ -90,14 +90,24 @@ def create_ai_alert_if_needed(
     substation: str,
     predicted_fault: str,
     probability: float,
+    anomaly: bool,
+    anomaly_score: float,
 ):
-    if predicted_fault == "normal":
+    high_confidence_fault = (
+        predicted_fault != "normal"
+        and probability >= ALERT_CONFIDENCE_THRESHOLD
+    )
+
+    if not high_confidence_fault and not anomaly:
         return
 
-    if probability < ALERT_CONFIDENCE_THRESHOLD:
-        return
+    fault_type = (
+        "ai_anomaly_detected"
+        if predicted_fault == "normal" and anomaly
+        else f"ai_predicted_{predicted_fault}"
+    )
 
-    severity = "critical" if probability >= 0.9 else "high"
+    severity = "critical" if probability >= 0.9 or anomaly_score >= 0.8 else "high"
 
     insert_sql = """
         INSERT INTO faults (
@@ -119,7 +129,7 @@ def create_ai_alert_if_needed(
             text(insert_sql),
             {
                 "substation": substation,
-                "fault_type": f"ai_predicted_{predicted_fault}",
+                "fault_type": fault_type,
                 "severity": severity,
             },
         )
@@ -171,6 +181,8 @@ def predict_latest():
             substation=substation,
             predicted_fault=predicted_fault,
             probability=probability,
+            anomaly=anomaly,
+            anomaly_score=anomaly_score,
         )
 
         prediction_results.append(

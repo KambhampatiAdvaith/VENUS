@@ -62,11 +62,15 @@ def get_prediction_metrics():
         SELECT
             COUNT(*) FILTER (
                 WHERE predicted_fault != 'normal'
+                OR anomaly = TRUE
             ) AS predicted_faults,
             COALESCE(AVG(probability), 0) AS average_confidence,
             COUNT(*) FILTER (
-                WHERE predicted_fault != 'normal'
-                AND (probability >= 0.8 OR anomaly = TRUE)
+                WHERE (
+                    predicted_fault != 'normal'
+                    AND probability >= 0.8
+                )
+                OR anomaly = TRUE
             ) AS high_risk_count,
             COUNT(*) FILTER (
                 WHERE predicted_fault != 'normal'
