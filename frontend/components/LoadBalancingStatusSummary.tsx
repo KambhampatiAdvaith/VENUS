@@ -137,7 +137,7 @@ export default function LoadBalancingStatusSummary({
                 </p>
             </div>
 
-            <div className="mt-8 bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+            <div className="mt-8 bg-slate-900 rounded-xl border border-slate-800 overflow-hidden overflow-x-auto">
                 <div className="p-6 border-b border-slate-800">
                     <h2 className="text-2xl font-bold">
                         Distribution Summary

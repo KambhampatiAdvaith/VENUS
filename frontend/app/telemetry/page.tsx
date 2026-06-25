@@ -4,6 +4,8 @@ import AutoRefreshControls from "../../components/AutoRefreshControls";
 import { api, TelemetryRecord } from "../../services/api";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
 
+export const dynamic = "force-dynamic";
+
 
 const fallbackTelemetry: TelemetryRecord[] = [];
 
@@ -69,7 +71,7 @@ export default async function Telemetry() {
           ) : null}
         </div>
 
-        <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+        <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-slate-800">
