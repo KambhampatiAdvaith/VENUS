@@ -1,0 +1,30 @@
+CREATE TABLE IF NOT EXISTS telemetry (
+    id SERIAL PRIMARY KEY,
+    substation VARCHAR(20) NOT NULL,
+    voltage DOUBLE PRECISION NOT NULL,
+    "current" DOUBLE PRECISION NOT NULL,
+    temperature DOUBLE PRECISION NOT NULL,
+    "load" DOUBLE PRECISION NOT NULL,
+    frequency DOUBLE PRECISION NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL
+);
+CREATE TABLE IF NOT EXISTS faults (
+    id SERIAL PRIMARY KEY,
+    substation VARCHAR(20) NOT NULL,
+    fault_type VARCHAR(100) NOT NULL,
+    severity VARCHAR(50) NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL
+);
+CREATE TABLE IF NOT EXISTS alerts (
+    id SERIAL PRIMARY KEY,
+    message TEXT NOT NULL,
+    severity VARCHAR(50) NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS load_balancing (
+    id SERIAL PRIMARY KEY,
+    source_node VARCHAR(20) NOT NULL,
+    target_node VARCHAR(20) NOT NULL,
+    load_shifted DOUBLE PRECISION NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

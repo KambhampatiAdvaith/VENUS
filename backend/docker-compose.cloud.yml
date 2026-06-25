@@ -1,0 +1,70 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: venus-cloud-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: venus-cloud-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: venus-cloud-zookeeper:2181
+
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://venus-cloud-kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    restart: unless-stopped
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: venus-cloud-kafka-init
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/bash", "-c"]
+    command: >
+      "
+      echo 'Waiting for Kafka to be ready...';
+      sleep 25;
+
+      kafka-topics --bootstrap-server venus-cloud-kafka:29092 --create --if-not-exists --topic venus.telemetry --partitions 3 --replication-factor 1;
+      kafka-topics --bootstrap-server venus-cloud-kafka:29092 --create --if-not-exists --topic venus.faults --partitions 3 --replication-factor 1;
+      kafka-topics --bootstrap-server venus-cloud-kafka:29092 --create --if-not-exists --topic venus.alerts --partitions 3 --replication-factor 1;
+      kafka-topics --bootstrap-server venus-cloud-kafka:29092 --create --if-not-exists --topic venus.load-balancing --partitions 3 --replication-factor 1;
+
+      echo 'Kafka topics created successfully.';
+      kafka-topics --bootstrap-server venus-cloud-kafka:29092 --list;
+      "
+    restart: "no"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: venus-cloud-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: venus
+      POSTGRES_PASSWORD: venus
+      POSTGRES_DB: venus_db
+    volumes:
+      - cloud_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  cloud_postgres_data:
