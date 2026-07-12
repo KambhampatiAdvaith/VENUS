@@ -30,7 +30,7 @@ class ConnectionManager:
         Stale / already-closed connections are silently removed
         so the backend never crashes on a dead WebSocket.
         """
-        message = json.dumps({"event": event_type, "data": data})
+        message = json.dumps({"event": event_type, "data": data}, default=str)
         dead: list[WebSocket] = []
 
         for connection in list(self._active):

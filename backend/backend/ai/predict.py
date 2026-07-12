@@ -133,6 +133,7 @@ def create_ai_alert_if_needed(
             :severity,
             NOW()
         )
+        RETURNING id, substation, fault_type, severity, timestamp
     """
 
     with engine.begin() as connection:
@@ -155,13 +156,9 @@ def create_ai_alert_if_needed(
                 "fault_type": fault_type,
                 "severity": severity,
             },
-        )
+        ).mappings().first()
 
-    return {
-        "substation": substation,
-        "fault_type": fault_type,
-        "severity": severity,
-    }
+    return dict(inserted_fault) if inserted_fault is not None else None
 
 
 def predict_latest(on_fault_created: Callable[[dict], None] | None = None):
