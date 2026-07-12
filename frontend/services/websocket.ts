@@ -7,6 +7,12 @@ export type LiveEvent = {
 };
 
 type EventHandler = (event: LiveEvent) => void;
+type ConnectionStatusHandler = () => void;
+
+type WebSocketClientOptions = {
+    onOpen?: ConnectionStatusHandler;
+    onClose?: ConnectionStatusHandler;
+};
 
 
 /**
@@ -18,7 +24,10 @@ type EventHandler = (event: LiveEvent) => void;
  *   // later:
  *   ws.disconnect();
  */
-export function createWebSocketClient(onEvent: EventHandler) {
+export function createWebSocketClient(
+    onEvent: EventHandler,
+    options: WebSocketClientOptions = {},
+) {
     let socket: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let stopped = false;
@@ -35,6 +44,10 @@ export function createWebSocketClient(onEvent: EventHandler) {
             return;
         }
 
+        socket.onopen = () => {
+            options.onOpen?.();
+        };
+
         socket.onmessage = (event) => {
             try {
                 const parsed: LiveEvent = JSON.parse(event.data as string);
@@ -46,6 +59,7 @@ export function createWebSocketClient(onEvent: EventHandler) {
 
         socket.onclose = () => {
             socket = null;
+            options.onClose?.();
             scheduleReconnect();
         };
 

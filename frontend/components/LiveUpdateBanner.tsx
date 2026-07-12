@@ -36,29 +36,26 @@ export default function LiveUpdateBanner({
     );
 
     useEffect(() => {
-        const client = createWebSocketClient((event: LiveEvent) => {
-            setConnected(true);
+        const client = createWebSocketClient(
+            (event: LiveEvent) => {
+                const shouldRefresh =
+                    !listenTo || listenTo.includes(event.event);
 
-            const shouldRefresh =
-                !listenTo || listenTo.includes(event.event);
-
-            if (shouldRefresh) {
-                setLastEvent(event.event);
-                router.refresh();
-            }
-        });
+                if (shouldRefresh) {
+                    setLastEvent(event.event);
+                    router.refresh();
+                }
+            },
+            {
+                onOpen: () => setConnected(true),
+                onClose: () => setConnected(false),
+            },
+        );
 
         clientRef.current = client;
         client.connect();
 
-        // Detect connection open via a small heartbeat interval
-        const heartbeat = setInterval(() => {
-            // connected state is set on first message; mark disconnected
-            // only after we've been mounted long enough to expect a message
-        }, 5000);
-
         return () => {
-            clearInterval(heartbeat);
             client.disconnect();
         };
     }, [router, listenTo]);

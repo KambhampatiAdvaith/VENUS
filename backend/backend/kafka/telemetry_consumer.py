@@ -1,7 +1,7 @@
 import json
 import os
 import time
-from typing import Any
+from typing import Any, Callable
 
 from dotenv import load_dotenv
 from kafka import KafkaConsumer
@@ -76,7 +76,24 @@ def normalize_telemetry_payload(data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def start_telemetry_consumer() -> None:
+def process_telemetry_message(
+    kafka_message: dict[str, Any],
+    on_telemetry_inserted: Callable[[dict[str, Any]], None] | None = None,
+) -> dict[str, Any] | None:
+    data = kafka_message.get("data", kafka_message)
+    data = normalize_telemetry_payload(data)
+
+    inserted = insert_telemetry(data)
+
+    if inserted is not None and on_telemetry_inserted is not None:
+        on_telemetry_inserted(inserted)
+
+    return inserted
+
+
+def start_telemetry_consumer(
+    on_telemetry_inserted: Callable[[dict[str, Any]], None] | None = None,
+) -> None:
     while True:
         consumer = None
 
@@ -89,10 +106,13 @@ def start_telemetry_consumer() -> None:
                 try:
                     kafka_message = message.value
 
-                    data = kafka_message.get("data", kafka_message)
-                    data = normalize_telemetry_payload(data)
+                    data = process_telemetry_message(
+                        kafka_message,
+                        on_telemetry_inserted,
+                    )
 
-                    insert_telemetry(data)
+                    if data is None:
+                        continue
 
                     print(
                         f"[CONSUMER] Telemetry processed | "

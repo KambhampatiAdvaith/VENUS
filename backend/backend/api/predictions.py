@@ -47,7 +47,11 @@ def get_predictions(limit: int = Query(default=50, ge=1, le=500)):
 
 @router.post("/predictions/run")
 async def run_predictions():
-    results = await asyncio.to_thread(predict_latest)
+    fault_events = []
+    results = await asyncio.to_thread(predict_latest, fault_events.append)
+
+    for fault_event in fault_events:
+        await manager.broadcast("fault", fault_event)
 
     await manager.broadcast(
         "prediction",

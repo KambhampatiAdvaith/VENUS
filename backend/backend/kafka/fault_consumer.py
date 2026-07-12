@@ -1,6 +1,7 @@
 import json
 import os
 import time
+from typing import Callable
 
 from dotenv import load_dotenv
 from kafka import KafkaConsumer
@@ -55,7 +56,22 @@ def normalize_fault_data(kafka_message: dict) -> dict:
     }
 
 
-def start_fault_consumer() -> None:
+def process_fault_message(
+    kafka_message: dict,
+    on_fault_inserted: Callable[[dict], None] | None = None,
+) -> dict | None:
+    fault_data = normalize_fault_data(kafka_message)
+    inserted_fault = insert_fault(fault_data)
+
+    if inserted_fault is not None and on_fault_inserted is not None:
+        on_fault_inserted(inserted_fault)
+
+    return inserted_fault
+
+
+def start_fault_consumer(
+    on_fault_inserted: Callable[[dict], None] | None = None,
+) -> None:
     while True:
         consumer = None
 
@@ -66,9 +82,13 @@ def start_fault_consumer() -> None:
 
             for message in consumer:
                 try:
-                    fault_data = normalize_fault_data(message.value)
+                    fault_data = process_fault_message(
+                        message.value,
+                        on_fault_inserted,
+                    )
 
-                    insert_fault(fault_data)
+                    if fault_data is None:
+                        continue
 
                     print(
                         f"[CONSUMER] Fault processed | "
