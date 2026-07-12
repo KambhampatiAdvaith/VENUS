@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 
 from fastapi import APIRouter, Query
@@ -5,6 +6,7 @@ from sqlalchemy import text
 
 from backend.ai.predict import predict_latest
 from backend.api.database import get_engine
+from backend.api.ws_manager import manager
 
 
 router = APIRouter()
@@ -44,8 +46,16 @@ def get_predictions(limit: int = Query(default=50, ge=1, le=500)):
 
 
 @router.post("/predictions/run")
-def run_predictions():
-    results = predict_latest()
+async def run_predictions():
+    results = await asyncio.to_thread(predict_latest)
+
+    await manager.broadcast(
+        "prediction",
+        {
+            "count": len(results),
+            "message": "V.E.N.U.S AI prediction cycle completed",
+        },
+    )
 
     return {
         "message": "V.E.N.U.S AI prediction cycle completed",

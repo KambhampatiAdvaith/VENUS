@@ -5,6 +5,7 @@ from fastapi import APIRouter, Query
 from sqlalchemy import text
 
 from backend.api.database import get_engine
+from backend.api.ws_manager import manager
 from backend.optimization.load_balancer import (
     create_pending_recommendation,
     execute_load_balancing,
@@ -286,14 +287,18 @@ def execute_load_balancing_action(
 
 
 @router.post("/load-balancing/recommend")
-def create_load_balancing_recommendation():
+async def create_load_balancing_recommendation():
     """
     Creates a pending load balancing recommendation.
 
     This supports supervised approval mode:
     Prediction/Overload -> Recommendation -> Pending Approval.
     """
-    return create_pending_recommendation()
+    result = create_pending_recommendation()
+
+    await manager.broadcast("load_balancing", {"action": "recommend", "result": result})
+
+    return result
 
 
 @router.get("/load-balancing/pending")
@@ -325,7 +330,7 @@ def get_pending_load_balancing_actions(
 
 
 @router.post("/load-balancing/approve/{action_id}")
-def approve_load_balancing_action(action_id: int):
+async def approve_load_balancing_action(action_id: int):
     """
     Approves and executes a pending load balancing recommendation.
     """
@@ -398,15 +403,19 @@ def approve_load_balancing_action(action_id: int):
             {"action_id": action_id},
         ).mappings().first()
 
-    return {
+    response = {
         "status": "approved",
         "message": f"Load balancing action {action_id} approved and executed.",
         "action": serialize_action(dict(updated)),
     }
 
+    await manager.broadcast("load_balancing", {"action": "approve", "action_id": action_id})
+
+    return response
+
 
 @router.post("/load-balancing/reject/{action_id}")
-def reject_load_balancing_action(action_id: int):
+async def reject_load_balancing_action(action_id: int):
     """
     Rejects a pending load balancing recommendation.
     """
@@ -476,11 +485,15 @@ def reject_load_balancing_action(action_id: int):
             {"action_id": action_id},
         ).mappings().first()
 
-    return {
+    response = {
         "status": "rejected",
         "message": f"Load balancing action {action_id} rejected.",
         "action": serialize_action(dict(updated)),
     }
+
+    await manager.broadcast("load_balancing", {"action": "reject", "action_id": action_id})
+
+    return response
 
 
 @router.get("/load-balancing/impact/latest")

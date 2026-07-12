@@ -1,6 +1,7 @@
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import AutoRefreshControls from "../../components/AutoRefreshControls";
+import LiveUpdateBanner from "../../components/LiveUpdateBanner";
 import { api, TelemetryRecord } from "../../services/api";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
 
@@ -44,7 +45,10 @@ export default async function Telemetry() {
             </p>
           </div>
 
-          <AutoRefreshControls label="Refresh Telemetry" />
+          <div className="flex flex-col items-start md:items-end gap-2">
+            <AutoRefreshControls label="Refresh Telemetry" />
+            <LiveUpdateBanner listenTo={["telemetry"]} />
+          </div>
         </div>
 
         <div

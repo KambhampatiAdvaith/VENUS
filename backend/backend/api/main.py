@@ -11,7 +11,8 @@ from backend.ai.predict import predict_latest
 from backend.api.database import get_db
 from backend.api.load_balancing import router as load_balancing_router
 from backend.api.predictions import router as predictions_router
-from backend.api.routes import dashboard, faults, nodes, telemetry
+from backend.api.routes import dashboard, faults, nodes, telemetry, websocket
+from backend.api.ws_manager import manager
 from backend.api.telemetry_simulator import (
     router as telemetry_simulator_router,
     start_telemetry_simulator,
@@ -63,6 +64,7 @@ app.include_router(nodes.router)
 app.include_router(predictions_router)
 app.include_router(load_balancing_router)
 app.include_router(telemetry_simulator_router)
+app.include_router(websocket.router)
 
 
 @app.on_event("startup")
@@ -131,6 +133,10 @@ async def run_ai_prediction_loop():
         try:
             await asyncio.to_thread(predict_latest)
             print("V.E.N.U.S AI prediction cycle completed")
+            await manager.broadcast(
+                "prediction",
+                {"message": "V.E.N.U.S AI prediction cycle completed"},
+            )
         except Exception as error:
             print(f"V.E.N.U.S AI prediction cycle failed: {error}")
 
