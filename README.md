@@ -62,6 +62,12 @@ docker-compose -f docker-compose.cloud.yml up --build
 - [Edge vs Cloud Comparison](docs/edge_cloud_comparison.md)
 - [Reliability, Retry, and Logging](docs/reliability.md)
 
+## Week 8 validation
+
+- [End-to-End Validation Runbook](docs/week8_validation.md)
+- [Functional Testing Checklist](docs/week8_functional_testing.md)
+- [Evidence Collection Checklist](docs/week8_evidence_checklist.md)
+
 ---
 
 ## Status
@@ -75,7 +81,7 @@ docker-compose -f docker-compose.cloud.yml up --build
 | Autonomous load balancing | Done |
 | Live dashboard | Done |
 | Docker edge-cloud separation | Done |
-| WebSocket live updates | In Progress |
-| Latency and throughput benchmarks | In Progress |
+| WebSocket live updates | Done |
+| Latency and throughput benchmarks | Done |
 
 ---
