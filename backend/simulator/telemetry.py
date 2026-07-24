@@ -1,6 +1,8 @@
 import random
 from datetime import datetime, timezone
 
+from simulator.realism import build_substation_telemetry
+
 
 NORMAL_RANGES = {
     "voltage": (220, 240),
@@ -23,15 +25,12 @@ def generate_normal_telemetry(substation: str) -> dict:
     """
     Generate normal telemetry for one substation.
     """
+    timestamp = datetime.now(timezone.utc)
+    telemetry = build_substation_telemetry(substation, timestamp)
 
     return {
-        "substation": substation,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "voltage": round(random.uniform(*NORMAL_RANGES["voltage"]), 2),
-        "current": round(random.uniform(*NORMAL_RANGES["current"]), 2),
-        "temperature": round(random.uniform(*NORMAL_RANGES["temperature"]), 2),
-        "load": round(random.uniform(*NORMAL_RANGES["load"]), 2),
-        "frequency": round(random.uniform(*NORMAL_RANGES["frequency"]), 2),
+        **telemetry,
+        "timestamp": timestamp.isoformat(),
         "is_fault": False,
         "fault_type": None,
     }

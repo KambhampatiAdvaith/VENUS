@@ -69,6 +69,7 @@ docker-compose -f docker-compose.cloud.yml up --build
 - [Evidence Collection Checklist](docs/week8_evidence_checklist.md)
 - [Final Performance Benchmarking](docs/week8_benchmarking.md)
 - [Resource Utilization Profile](docs/week8_resource_profile.md)
+- [Simulator Realism Enhancement](docs/simulator_realism.md)
 
 ---
 

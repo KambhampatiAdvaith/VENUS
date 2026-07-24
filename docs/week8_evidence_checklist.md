@@ -41,6 +41,7 @@ For the step-by-step procedures that produce each piece of evidence, see the
 | 2.2 | Telemetry list page in dashboard | Screenshot of the Telemetry page showing multiple rows | |
 | 2.3 | Latency endpoint output | PowerShell: `(Invoke-WebRequest http://127.0.0.1:8000/telemetry/latency).Content` — screenshot or copy output | |
 | 2.4 | Freshness indicator showing recent timestamp | Screenshot of the dashboard Telemetry page with freshness/last-updated visible | |
+| 2.5 | Simulator realism evidence | Capture `POST /telemetry/simulate/normal` and `POST /telemetry/simulate/fault` output showing lower off-peak load, higher evening load, and clear fault deviation; compare with [Simulator Realism Enhancement](simulator_realism.md) | |
 
 ---
 
@@ -190,4 +191,5 @@ After collecting all items, record the final status here:
 - [Functional Testing Checklist](week8_functional_testing.md)
 - [Final Performance Benchmarking](week8_benchmarking.md)
 - [Resource Utilization Profile](week8_resource_profile.md)
+- [Simulator Realism Enhancement](simulator_realism.md)
 - [Week 7 Evidence Pack](week7_evidence_pack.md)
