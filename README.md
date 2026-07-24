@@ -67,6 +67,8 @@ docker-compose -f docker-compose.cloud.yml up --build
 - [End-to-End Validation Runbook](docs/week8_validation.md)
 - [Functional Testing Checklist](docs/week8_functional_testing.md)
 - [Evidence Collection Checklist](docs/week8_evidence_checklist.md)
+- [Final Performance Benchmarking](docs/week8_benchmarking.md)
+- [Resource Utilization Profile](docs/week8_resource_profile.md)
 
 ---
 

@@ -135,6 +135,7 @@ For the step-by-step procedures that produce each piece of evidence, see the
 | 10.2 | API latency benchmark results | Reuse `benchmark_results/api_latency_YYYYMMDD_HHMMSS.md` | |
 | 10.3 | Telemetry throughput benchmark results | Reuse `benchmark_results/telemetry_throughput_YYYYMMDD_HHMMSS.md` | |
 | 10.4 | Edge vs Cloud comparison report | Reuse `benchmark_results/edge_cloud_comparison_YYYYMMDD_HHMMSS.md` | |
+| 10.5 | Resource utilization profile (Week 8) | Run `python -m benchmarks.resource_utilization` — see [Week 8 Resource Profile](week8_resource_profile.md) | |
 
 > **Week 7 reuse note:** All benchmark reports were generated as part of
 > Week 7 PR #9.  These cover API latency, telemetry throughput, AI evaluation,
@@ -142,6 +143,9 @@ For the step-by-step procedures that produce each piece of evidence, see the
 > `benchmark_results/` for Week 8 evidence.  The full procedure for generating
 > or regenerating them is in the
 > [Week 7 Evidence Pack](week7_evidence_pack.md#windows-powershell-runbook).
+>
+> To regenerate all benchmarks plus resource utilization in one command see
+> [Week 8 Benchmarking](week8_benchmarking.md).
 
 ---
 
@@ -184,4 +188,6 @@ After collecting all items, record the final status here:
 
 - [End-to-End Validation Runbook](week8_validation.md)
 - [Functional Testing Checklist](week8_functional_testing.md)
+- [Final Performance Benchmarking](week8_benchmarking.md)
+- [Resource Utilization Profile](week8_resource_profile.md)
 - [Week 7 Evidence Pack](week7_evidence_pack.md)
