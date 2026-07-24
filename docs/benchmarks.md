@@ -6,6 +6,9 @@ Lightweight benchmark scripts that measure the V.E.N.U.S. telemetry pipeline
 For AI evaluation metrics (prediction/anomaly/confidence distributions and AI
 endpoint latency), see [`docs/ai_evaluation.md`](ai_evaluation.md).
 
+For Edge vs Cloud comparison evidence, see
+[`docs/edge_cloud_comparison.md`](edge_cloud_comparison.md).
+
 ---
 
 ## Prerequisites
@@ -51,6 +54,13 @@ python -m benchmarks.run_week7_benchmarks --base-url http://127.0.0.1:8000 --dur
 This runs both the API latency benchmark and the telemetry throughput benchmark,
 then writes a combined summary to `benchmark_results/`.
 
+Optional Week 7 evidence modules can be enabled explicitly:
+
+```powershell
+python -m benchmarks.run_week7_benchmarks --base-url http://127.0.0.1:8000 --ai-eval
+python -m benchmarks.run_week7_benchmarks --base-url http://127.0.0.1:8000 --edge-cloud
+```
+
 #### Full option list
 
 ```powershell
@@ -69,6 +79,10 @@ python -m benchmarks.run_week7_benchmarks `
 | `--duration` | `30` | Throughput benchmark duration (seconds) |
 | `--rate` | `10` | Target simulate req/s (keep ≤ 20 on local machines) |
 | `--output-dir` | `../benchmark_results` | Where report files are written |
+| `--ai-eval` | disabled | Add AI evaluation evidence |
+| `--ai-eval-requests` | `10` | Requests per AI endpoint when `--ai-eval` is used |
+| `--edge-cloud` | disabled | Add Edge vs Cloud comparison evidence |
+| `--edge-cloud-requests` | `10` | Requests per endpoint when `--edge-cloud` is used |
 
 ---
 
@@ -115,6 +129,8 @@ Reports are written to `benchmark_results/` at the repository root.
 | `week7_benchmark_YYYYMMDD_HHMMSS.md` | Combined Week 7 report (Markdown) |
 | `ai_evaluation_YYYYMMDD_HHMMSS.json` | AI evaluation metrics report (JSON) |
 | `ai_evaluation_YYYYMMDD_HHMMSS.md` | AI evaluation metrics report (Markdown) |
+| `edge_cloud_comparison_YYYYMMDD_HHMMSS.json` | Edge vs Cloud comparison report (JSON) |
+| `edge_cloud_comparison_YYYYMMDD_HHMMSS.md` | Edge vs Cloud comparison report (Markdown) |
 
 > **Note:** `benchmark_results/*.json` and `benchmark_results/*.md` are excluded
 > from Git (see `.gitignore`).
@@ -134,6 +150,23 @@ python -m benchmarks.run_week7_benchmarks --base-url http://127.0.0.1:8000 --ai-
 ```
 
 See [`docs/ai_evaluation.md`](ai_evaluation.md) for full documentation.
+
+---
+
+## Edge vs Cloud comparison evidence (Week 7 PR #7)
+
+```powershell
+python -m benchmarks.edge_cloud_comparison --base-url http://127.0.0.1:8000
+```
+
+Or include in the combined suite:
+
+```powershell
+python -m benchmarks.run_week7_benchmarks --base-url http://127.0.0.1:8000 --edge-cloud
+```
+
+See [`docs/edge_cloud_comparison.md`](edge_cloud_comparison.md) for full
+documentation and caveats about operational agreement vs supervised accuracy.
 
 ---
 

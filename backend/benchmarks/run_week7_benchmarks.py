@@ -11,6 +11,9 @@ Usage (from the backend/ directory):
 Include AI evaluation metrics (Week 7 PR #6):
     python -m benchmarks.run_week7_benchmarks --ai-eval
 
+Include Edge vs Cloud comparison evidence (Week 7 PR #7):
+    python -m benchmarks.run_week7_benchmarks --edge-cloud
+
 Windows PowerShell:
     cd backend
     .\\venv\\Scripts\\Activate.ps1
@@ -38,6 +41,7 @@ from typing import Any
 
 from benchmarks.api_latency_benchmark import run as run_api_latency
 from benchmarks.ai_evaluation_metrics import run as run_ai_eval
+from benchmarks.edge_cloud_comparison import run as run_edge_cloud
 from benchmarks.telemetry_throughput_benchmark import run as run_throughput
 
 
@@ -83,6 +87,7 @@ def save_combined_report(
     output_dir: Path,
     run_ts: str,
     ai_eval_results: dict[str, Any] | None = None,
+    edge_cloud_results: dict[str, Any] | None = None,
 ) -> tuple[Path, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -102,6 +107,8 @@ def save_combined_report(
 
     if ai_eval_results is not None:
         payload["ai_evaluation"] = ai_eval_results
+    if edge_cloud_results is not None:
+        payload["edge_cloud_comparison"] = edge_cloud_results
 
     stem = f"week7_benchmark_{run_ts}"
     json_path = output_dir / f"{stem}.json"
@@ -218,6 +225,55 @@ def save_combined_report(
                 )
             lines += [""]
 
+    if edge_cloud_results is not None:
+        db_result = edge_cloud_results.get("database", {})
+        edge = db_result.get("edge_coverage", {})
+        cloud = db_result.get("cloud_coverage", {})
+        agreement = edge_cloud_results.get("agreement_summary", {})
+        recency = edge_cloud_results.get("recency_summary", {})
+        gap = recency.get("cloud_minus_edge_seconds") or {}
+        agreement_rate = agreement.get("agreement_rate_percent")
+
+        lines += [
+            "## Edge vs Cloud Comparison",
+            "",
+            "| Metric | Value |",
+            "|---|---|",
+            f"| DB available | {db_result.get('db_available', False)} |",
+            f"| Telemetry rows with edge outputs | {edge.get('telemetry_rows_with_edge_outputs', 'N/A')} |",
+            f"| Total prediction rows | {cloud.get('total_prediction_rows', 'N/A')} |",
+            f"| Edge substations covered | {edge.get('distinct_substations_with_edge_outputs', 'N/A')} |",
+            f"| Cloud substations covered | {cloud.get('prediction_distinct_substations', 'N/A')} |",
+            f"| Paired substations | {agreement.get('paired_substations', 0)} |",
+            f"| Operational agreement rate | {f'{agreement_rate}%' if agreement_rate is not None else 'N/A'} |",
+            f"| Latest edge age (s) | {recency.get('latest_edge_age_seconds', 'N/A')} |",
+            f"| Latest cloud age (s) | {recency.get('latest_cloud_age_seconds', 'N/A')} |",
+            f"| Cloud minus edge median (s) | {gap.get('median', 'N/A')} |",
+            "",
+        ]
+
+        endpoint_results = edge_cloud_results.get("endpoint_timing", [])
+        if endpoint_results:
+            lines += [
+                "## Edge/Cloud Endpoint Timing",
+                "",
+                "| Endpoint | Requests | OK | Errors | Min (ms) | Avg (ms) | P95 (ms) | Max (ms) |",
+                "|---|---|---|---|---|---|---|---|",
+            ]
+            for r in endpoint_results:
+                lat = r.get("latency_ms") or {}
+                lines.append(
+                    f"| {r['endpoint']} "
+                    f"| {r['requests']} "
+                    f"| {r['successes']} "
+                    f"| {r['failures']} "
+                    f"| {lat.get('min', 'N/A')} "
+                    f"| {lat.get('avg', 'N/A')} "
+                    f"| {lat.get('p95', 'N/A')} "
+                    f"| {lat.get('max', 'N/A')} |"
+                )
+            lines += [""]
+
     md_path.write_text("\n".join(lines), encoding="utf-8")
     return json_path, md_path
 
@@ -237,10 +293,12 @@ def run(
     throughput_timeout: float = 15.0,
     ai_eval: bool = False,
     ai_eval_requests: int = 10,
+    edge_cloud: bool = False,
+    edge_cloud_requests: int = 10,
 ) -> None:
     run_ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
-    total_phases = 3 if ai_eval else 2
+    total_phases = 2 + int(ai_eval) + int(edge_cloud)
 
     print("=" * 60)
     print("  V.E.N.U.S. Week 7 Benchmark Suite")
@@ -252,21 +310,26 @@ def run(
     print(f"  Throughput target rate : {target_rate} req/s")
     if ai_eval:
         print(f"  AI evaluation : enabled ({ai_eval_requests} req/endpoint)")
+    if edge_cloud:
+        print(f"  Edge vs cloud : enabled ({edge_cloud_requests} req/endpoint)")
     print()
 
     _check_reachability(base_url)
 
     # --- Phase 1: API latency ---
-    print(f"\n[1/{total_phases}] Running API latency benchmark …")
+    phase = 1
+
+    print(f"\n[{phase}/{total_phases}] Running API latency benchmark …")
     api_results = run_api_latency(
         base_url=base_url,
         n_requests=n_requests,
         output_dir=output_dir,
         timeout=api_timeout,
     )
+    phase += 1
 
     # --- Phase 2: Throughput ---
-    print(f"\n[2/{total_phases}] Running telemetry throughput benchmark …")
+    print(f"\n[{phase}/{total_phases}] Running telemetry throughput benchmark …")
     throughput_results = run_throughput(
         base_url=base_url,
         duration_s=duration_s,
@@ -274,14 +337,25 @@ def run(
         output_dir=output_dir,
         timeout=throughput_timeout,
     )
+    phase += 1
 
     # --- Phase 3: AI evaluation (optional) ---
     ai_eval_results: dict[str, Any] | None = None
     if ai_eval:
-        print(f"\n[3/{total_phases}] Running AI evaluation metrics …")
+        print(f"\n[{phase}/{total_phases}] Running AI evaluation metrics …")
         ai_eval_results = run_ai_eval(
             base_url=base_url,
             n_requests=ai_eval_requests,
+            output_dir=output_dir,
+        )
+        phase += 1
+
+    edge_cloud_results: dict[str, Any] | None = None
+    if edge_cloud:
+        print(f"\n[{phase}/{total_phases}] Running edge vs cloud comparison …")
+        edge_cloud_results = run_edge_cloud(
+            base_url=base_url,
+            n_requests=edge_cloud_requests,
             output_dir=output_dir,
         )
 
@@ -296,6 +370,7 @@ def run(
         output_dir=output_dir,
         run_ts=run_ts,
         ai_eval_results=ai_eval_results,
+        edge_cloud_results=edge_cloud_results,
     )
 
     print("\n" + "=" * 60)
@@ -349,6 +424,18 @@ def main() -> None:
         default=10,
         help="Requests per AI endpoint for latency timing (default: 10, only used with --ai-eval)",
     )
+    parser.add_argument(
+        "--edge-cloud",
+        action="store_true",
+        default=False,
+        help="Also run Edge vs Cloud comparison evidence (Week 7 PR #7)",
+    )
+    parser.add_argument(
+        "--edge-cloud-requests",
+        type=int,
+        default=10,
+        help="Requests per edge/cloud endpoint for timing (default: 10, only used with --edge-cloud)",
+    )
     args = parser.parse_args()
 
     if args.output_dir:
@@ -364,6 +451,8 @@ def main() -> None:
         output_dir=output_dir,
         ai_eval=args.ai_eval,
         ai_eval_requests=args.ai_eval_requests,
+        edge_cloud=args.edge_cloud,
+        edge_cloud_requests=args.edge_cloud_requests,
     )
 
 
