@@ -3,6 +3,9 @@
 Lightweight benchmark scripts that measure the V.E.N.U.S. telemetry pipeline
 **throughput** and **API responsiveness** without modifying production code.
 
+For AI evaluation metrics (prediction/anomaly/confidence distributions and AI
+endpoint latency), see [`docs/ai_evaluation.md`](ai_evaluation.md).
+
 ---
 
 ## Prerequisites
@@ -110,9 +113,27 @@ Reports are written to `benchmark_results/` at the repository root.
 | `telemetry_throughput_YYYYMMDD_HHMMSS.md` | Throughput Markdown summary |
 | `week7_benchmark_YYYYMMDD_HHMMSS.json` | Combined Week 7 report (JSON) |
 | `week7_benchmark_YYYYMMDD_HHMMSS.md` | Combined Week 7 report (Markdown) |
+| `ai_evaluation_YYYYMMDD_HHMMSS.json` | AI evaluation metrics report (JSON) |
+| `ai_evaluation_YYYYMMDD_HHMMSS.md` | AI evaluation metrics report (Markdown) |
 
 > **Note:** `benchmark_results/*.json` and `benchmark_results/*.md` are excluded
 > from Git (see `.gitignore`).
+
+---
+
+## AI evaluation metrics (Week 7 PR #6)
+
+```powershell
+python -m benchmarks.ai_evaluation_metrics --base-url http://127.0.0.1:8000
+```
+
+Or include in the combined suite:
+
+```powershell
+python -m benchmarks.run_week7_benchmarks --base-url http://127.0.0.1:8000 --ai-eval
+```
+
+See [`docs/ai_evaluation.md`](ai_evaluation.md) for full documentation.
 
 ---
 
