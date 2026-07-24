@@ -22,3 +22,7 @@ frontend/.env
 # OS
 .DS_Store
 Thumbs.db
+
+# Benchmark result files (generated locally)
+benchmark_results/*.json
+benchmark_results/*.md
