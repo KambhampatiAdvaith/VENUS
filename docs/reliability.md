@@ -46,7 +46,7 @@ Still fatal or operator-visible:
 Start the backend:
 
 ```powershell
-cd "C:\Users\K Advaith\OneDrive\Desktop\V.E.N.U.S\backend"
+cd backend
 .\venv\Scripts\Activate.ps1
 python -m uvicorn backend.api.main:app --reload
 ```

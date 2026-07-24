@@ -9,6 +9,9 @@ endpoint latency), see [`docs/ai_evaluation.md`](ai_evaluation.md).
 For Edge vs Cloud comparison evidence, see
 [`docs/edge_cloud_comparison.md`](edge_cloud_comparison.md).
 
+For the final Week 7 demo order, screenshot checklist, and consolidated
+PowerShell runbook, see [`docs/week7_evidence_pack.md`](week7_evidence_pack.md).
+
 ---
 
 ## Prerequisites
