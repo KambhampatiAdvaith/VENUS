@@ -37,6 +37,8 @@ python -m uvicorn backend.api.main:app --reload
 
 See [Reliability, Retry, and Logging](../docs/reliability.md) for the current backend logging format, retry/backoff behavior, tolerated failures, and Windows PowerShell-friendly log inspection commands.
 
+For the consolidated Week 7 demo/runbook and evidence checklist, see [Week 7 Evidence Pack](../docs/week7_evidence_pack.md).
+
 ## Existing database migration note
 
 If your local database predates the current backend, rerun `python -m backend.database.init_db` or apply the updated `backend/database/schema.sql` statements manually so `predictions`, `faults`, `load_balancing_actions`, and the telemetry edge columns all exist before starting the API.

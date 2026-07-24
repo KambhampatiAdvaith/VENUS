@@ -54,6 +54,16 @@ docker-compose -f docker-compose.cloud.yml up --build
 
 ---
 
+## Week 7 evidence
+
+- [Final Week 7 Evidence Pack](docs/week7_evidence_pack.md)
+- [Benchmark Guide](docs/benchmarks.md)
+- [AI Evaluation Metrics](docs/ai_evaluation.md)
+- [Edge vs Cloud Comparison](docs/edge_cloud_comparison.md)
+- [Reliability, Retry, and Logging](docs/reliability.md)
+
+---
+
 ## Status
 
 | Feature | Status |
