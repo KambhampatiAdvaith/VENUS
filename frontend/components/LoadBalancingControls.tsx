@@ -6,6 +6,7 @@ import {
     api,
     LoadBalancingAction,
 } from "../services/api";
+import { formatDisplayTimestamp } from "../services/timestamps";
 
 
 type LoadBalancingMutationResult = {
@@ -14,15 +15,6 @@ type LoadBalancingMutationResult = {
     message?: string;
     action?: LoadBalancingAction | null;
 };
-
-
-function formatDateTime(timestamp: string | null): string {
-    if (!timestamp) {
-        return "N/A";
-    }
-
-    return new Date(timestamp).toLocaleString();
-}
 
 
 function formatLabel(value: string): string {
@@ -278,7 +270,9 @@ export default function LoadBalancingControls() {
                                     </td>
 
                                     <td className="p-4 border border-slate-700 text-sm text-slate-300">
-                                        {formatDateTime(action.created_at)}
+                                        {formatDisplayTimestamp({
+                                            created_at: action.created_at,
+                                        })}
                                     </td>
 
                                     <td className="p-4 border border-slate-700">

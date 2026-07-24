@@ -85,37 +85,49 @@ def get_latency_metrics() -> dict[str, Any]:
     """
     Returns end-to-end latency metrics computed from available timestamp fields.
 
-    Uses database_written_at - generated_at as the primary latency measure.
-    Falls back to database_written_at - timestamp when generated_at is NULL.
-    Handles NULL/missing fields gracefully.
+    Uses recent rows only. Prefers database_written_at - kafka_received_at
+    for pipeline latency and only falls back to generated_at when the delta
+    is sane, excluding negative and extreme outliers.
     """
     query = """
+        WITH candidate_latencies AS (
+            SELECT
+                CASE
+                    WHEN kafka_received_at IS NOT NULL
+                         AND database_written_at >= kafka_received_at
+                         AND database_written_at - kafka_received_at <= INTERVAL '5 minutes'
+                    THEN EXTRACT(EPOCH FROM (
+                        database_written_at - kafka_received_at
+                    )) * 1000
+                    WHEN generated_at IS NOT NULL
+                         AND database_written_at >= generated_at
+                         AND database_written_at - generated_at <= INTERVAL '5 minutes'
+                    THEN EXTRACT(EPOCH FROM (
+                        database_written_at - generated_at
+                    )) * 1000
+                    ELSE NULL
+                END AS latency_ms
+            FROM telemetry
+            WHERE database_written_at IS NOT NULL
+              AND database_written_at >= NOW() - INTERVAL '15 minutes'
+            ORDER BY database_written_at DESC
+            LIMIT 500
+        ),
+        sane_latencies AS (
+            SELECT latency_ms
+            FROM candidate_latencies
+            WHERE latency_ms IS NOT NULL
+              AND latency_ms BETWEEN 0 AND 300000
+        )
         SELECT
             COUNT(*) AS sample_count,
-            AVG(
-                EXTRACT(EPOCH FROM (
-                    database_written_at - COALESCE(generated_at, timestamp)
-                )) * 1000
-            ) AS avg_latency_ms,
-            MIN(
-                EXTRACT(EPOCH FROM (
-                    database_written_at - COALESCE(generated_at, timestamp)
-                )) * 1000
-            ) AS min_latency_ms,
-            MAX(
-                EXTRACT(EPOCH FROM (
-                    database_written_at - COALESCE(generated_at, timestamp)
-                )) * 1000
-            ) AS max_latency_ms,
+            AVG(latency_ms) AS avg_latency_ms,
+            MIN(latency_ms) AS min_latency_ms,
+            MAX(latency_ms) AS max_latency_ms,
             PERCENTILE_CONT(0.5) WITHIN GROUP (
-                ORDER BY EXTRACT(EPOCH FROM (
-                    database_written_at - COALESCE(generated_at, timestamp)
-                )) * 1000
+                ORDER BY latency_ms
             ) AS median_latency_ms
-        FROM telemetry
-        WHERE database_written_at IS NOT NULL
-          AND (generated_at IS NOT NULL OR timestamp IS NOT NULL)
-          AND database_written_at >= COALESCE(generated_at, timestamp)
+        FROM sane_latencies
     """
 
     engine = get_engine()

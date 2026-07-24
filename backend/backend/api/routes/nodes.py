@@ -38,7 +38,9 @@ def get_nodes(db: Session = Depends(get_db)):
     latest_subquery = (
         db.query(
             Telemetry.substation,
-            func.max(Telemetry.timestamp).label("latest_timestamp"),
+            func.max(
+                func.coalesce(Telemetry.database_written_at, Telemetry.timestamp)
+            ).label("latest_timestamp"),
         )
         .group_by(Telemetry.substation)
         .subquery()
@@ -49,7 +51,10 @@ def get_nodes(db: Session = Depends(get_db)):
         .join(
             latest_subquery,
             (Telemetry.substation == latest_subquery.c.substation)
-            & (Telemetry.timestamp == latest_subquery.c.latest_timestamp),
+            & (
+                func.coalesce(Telemetry.database_written_at, Telemetry.timestamp)
+                == latest_subquery.c.latest_timestamp
+            ),
         )
         .order_by(Telemetry.substation)
         .all()
@@ -72,7 +77,7 @@ def get_nodes(db: Session = Depends(get_db)):
                 "voltage": telemetry.voltage,
                 "temperature": telemetry.temperature,
                 "frequency": telemetry.frequency,
-                "last_updated": telemetry.timestamp,
+                "last_updated": telemetry.database_written_at or telemetry.timestamp,
             }
         )
 

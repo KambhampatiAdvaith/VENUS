@@ -1,3 +1,6 @@
+import { getDisplayTimestamp } from "./timestamps";
+
+
 const STALE_TELEMETRY_MS = 2 * 60 * 1000;
 
 
@@ -21,7 +24,10 @@ export function getTelemetryFreshness(
     now = new Date(),
     databaseWrittenAt?: string | null,
 ): TelemetryFreshness {
-    const effectiveTimestamp = databaseWrittenAt ?? timestamp;
+    const effectiveTimestamp = getDisplayTimestamp({
+        database_written_at: databaseWrittenAt,
+        timestamp,
+    });
 
     if (!effectiveTimestamp) {
         return {

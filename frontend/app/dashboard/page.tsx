@@ -8,6 +8,10 @@ import AutoRefreshControls from "../../components/AutoRefreshControls";
 import LiveUpdateBanner from "../../components/LiveUpdateBanner";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
 import {
+  formatDisplayTime,
+  formatDisplayTimestamp,
+} from "../../services/timestamps";
+import {
   api,
   DashboardMetrics,
   NodeStatus,
@@ -141,10 +145,7 @@ function buildLoadChartData(telemetry: TelemetryRecord[]): LoadChartData[] {
     .slice()
     .reverse()
     .map((item) => ({
-      time: new Date(item.timestamp).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      time: formatDisplayTime(item),
       load: item.load,
     }));
 }
@@ -194,15 +195,6 @@ function getRiskBorder(level: string): string {
   }
 
   return "border-slate-800";
-}
-
-
-function formatDateTime(timestamp: string | null): string {
-  if (!timestamp) {
-    return "N/A";
-  }
-
-  return new Date(timestamp).toLocaleString();
 }
 
 
@@ -737,7 +729,9 @@ export default async function Dashboard() {
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400">Timestamp</span>
                     <span className="text-right text-sm">
-                      {formatDateTime(latestLoadBalancingImpact.created_at)}
+                      {formatDisplayTimestamp({
+                        created_at: latestLoadBalancingImpact.created_at,
+                      })}
                     </span>
                   </div>
                 </div>
@@ -827,7 +821,9 @@ export default async function Dashboard() {
                         </td>
 
                         <td className="p-4 border border-slate-700 text-sm text-slate-300">
-                          {formatDateTime(action.created_at)}
+                          {formatDisplayTimestamp({
+                            created_at: action.created_at,
+                          })}
                         </td>
                       </tr>
                     ))
@@ -925,9 +921,7 @@ export default async function Dashboard() {
 
                 <p className="text-slate-500 text-xs mt-5">
                   Last updated:{" "}
-                  {node.last_updated
-                    ? new Date(node.last_updated).toLocaleString()
-                    : "N/A"}
+                  {formatDisplayTimestamp({ timestamp: node.last_updated })}
                 </p>
               </div>
             ))}
