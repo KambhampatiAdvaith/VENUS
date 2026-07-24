@@ -28,6 +28,7 @@ function buildLoadChartData(telemetry: TelemetryRecord[]): LoadChartData[] {
 export default async function LoadBalancing() {
   let nodes = fallbackNodes;
   let telemetry = fallbackTelemetry;
+  let apiError = false;
 
   try {
     const [nodesResponse, telemetryResponse] = await Promise.all([
@@ -39,6 +40,7 @@ export default async function LoadBalancing() {
     telemetry = telemetryResponse;
   } catch (error) {
     console.error("Failed to fetch load balancing data:", error);
+    apiError = true;
   }
 
   const loadChartData = buildLoadChartData(telemetry);
@@ -92,6 +94,15 @@ export default async function LoadBalancing() {
             </p>
           ) : null}
         </div>
+
+        {apiError && (
+          <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-300">
+            <p className="font-semibold">Unable to load load balancing data</p>
+            <p className="text-sm mt-1">
+              The backend could not be reached. Make sure the V.E.N.U.S backend is running, then refresh the page.
+            </p>
+          </div>
+        )}
 
         <LoadBalancingStatusSummary nodes={nodes} />
 

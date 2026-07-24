@@ -39,11 +39,13 @@ function formatTimestamp(timestamp: string | null): string {
 
 export default async function Nodes() {
   let nodes = fallbackNodes;
+  let apiError = false;
 
   try {
     nodes = await api.getNodes();
   } catch (error) {
     console.error("Failed to fetch node status data:", error);
+    apiError = true;
   }
 
   const latestNodeTimestamp = nodes
@@ -98,6 +100,15 @@ export default async function Nodes() {
           ) : null}
         </div>
 
+        {apiError && (
+          <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-300">
+            <p className="font-semibold">Unable to load node status</p>
+            <p className="text-sm mt-1">
+              The backend could not be reached. Make sure the V.E.N.U.S backend is running, then refresh the page.
+            </p>
+          </div>
+        )}
+
         <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -137,9 +148,15 @@ export default async function Nodes() {
                 <tr>
                   <td
                     colSpan={7}
-                    className="p-6 border border-slate-700 text-center text-slate-400"
+                    className="p-6 border border-slate-700"
                   >
-                    No node status records available.
+                    <p className="font-semibold text-slate-300">No node status records yet</p>
+                    <p className="text-sm mt-1 text-slate-400">
+                      Node data is derived from telemetry. Start the simulator to populate node status:
+                    </p>
+                    <p className="text-sm mt-1 font-mono text-slate-500">
+                      POST /telemetry/simulate/normal
+                    </p>
                   </td>
                 </tr>
               ) : (

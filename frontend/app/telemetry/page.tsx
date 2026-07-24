@@ -14,11 +14,13 @@ const fallbackTelemetry: TelemetryRecord[] = [];
 
 export default async function Telemetry() {
   let telemetryData = fallbackTelemetry;
+  let apiError = false;
 
   try {
     telemetryData = await api.getTelemetry(100);
   } catch (error) {
     console.error("Failed to fetch telemetry data:", error);
+    apiError = true;
   }
 
   const telemetryFreshness = getTelemetryFreshness(
@@ -75,6 +77,15 @@ export default async function Telemetry() {
           ) : null}
         </div>
 
+        {apiError && (
+          <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-300">
+            <p className="font-semibold">Unable to load telemetry</p>
+            <p className="text-sm mt-1">
+              The backend could not be reached. Make sure the V.E.N.U.S backend is running, then refresh the page.
+            </p>
+          </div>
+        )}
+
         <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -118,9 +129,15 @@ export default async function Telemetry() {
                 <tr>
                   <td
                     colSpan={8}
-                    className="p-6 text-center text-slate-400 border border-slate-700"
+                    className="p-6 border border-slate-700"
                   >
-                    No telemetry records available.
+                    <p className="font-semibold text-slate-300">No telemetry records yet</p>
+                    <p className="text-sm mt-1 text-slate-400">
+                      Start the simulator to begin collecting data:
+                    </p>
+                    <p className="text-sm mt-1 font-mono text-slate-500">
+                      POST /telemetry/simulate/normal
+                    </p>
                   </td>
                 </tr>
               ) : (
