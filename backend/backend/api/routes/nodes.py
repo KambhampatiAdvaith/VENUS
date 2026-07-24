@@ -39,7 +39,7 @@ def get_node_status(
 @router.get("", response_model=list[NodeStatusResponse])
 def get_nodes(db: Session = Depends(get_db)):
     query = """
-        WITH latest_telemetry AS (
+        WITH latest_by_ingest AS (
             SELECT DISTINCT ON (substation)
                 substation,
                 voltage,
@@ -49,10 +49,39 @@ def get_nodes(db: Session = Depends(get_db)):
                 "timestamp",
                 database_written_at
             FROM telemetry
+            WHERE database_written_at IS NOT NULL
             ORDER BY
                 substation,
-                COALESCE(database_written_at, "timestamp") DESC,
+                database_written_at DESC,
                 id DESC
+        ),
+        latest_by_payload AS (
+            SELECT DISTINCT ON (substation)
+                substation,
+                voltage,
+                temperature,
+                "load" AS load,
+                frequency,
+                "timestamp",
+                database_written_at
+            FROM telemetry
+            WHERE database_written_at IS NULL
+            ORDER BY
+                substation,
+                "timestamp" DESC,
+                id DESC
+        ),
+        latest_telemetry AS (
+            SELECT *
+            FROM latest_by_ingest
+            UNION ALL
+            SELECT latest_by_payload.*
+            FROM latest_by_payload
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM latest_by_ingest
+                WHERE latest_by_ingest.substation = latest_by_payload.substation
+            )
         ),
         fault_counts AS (
             SELECT substation, COUNT(*) AS fault_count
