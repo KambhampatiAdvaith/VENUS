@@ -36,7 +36,7 @@ For the full validation procedure of each workflow, see the
 
 | # | Test | Expected result | Result | Notes |
 |---|---|---|---|---|
-| 2.1 | `GET /telemetry/latest` returns a row | JSON object with `substation_id`, `voltage`, `current`, `temperature`, `load`, `frequency` | | |
+| 2.1 | `GET /telemetry/latest` returns a row | JSON object with `substation`, `voltage`, `current`, `temperature`, `load`, `frequency` | | |
 | 2.2 | `GET /telemetry?limit=10` returns multiple rows | JSON array with 1–10 telemetry rows | | |
 | 2.3 | `GET /telemetry/latency` returns stats | `avg_latency_ms`, `min_latency_ms`, `max_latency_ms`, `median_latency_ms`, `sample_count > 0` | | |
 | 2.4 | `POST /telemetry/simulate/normal` succeeds | HTTP 200; new row appears in subsequent `GET /telemetry/latest` | | |
@@ -87,7 +87,7 @@ For the full validation procedure of each workflow, see the
 | # | Test | Expected result | Result | Notes |
 |---|---|---|---|---|
 | 6.1 | `GET /load-balancing?limit=5` returns rows | JSON array with recommendation objects | | |
-| 6.2 | Recommendation object includes `id`, `status`, `action`, `substation_id` | Fields present | | |
+| 6.2 | Recommendation object includes `id`, `action_status`, `source_node`, `target_node`, `load_shifted`, `trigger_reason` | Fields present | | |
 | 6.3 | Recommendations page in dashboard shows pending items | At least one recommendation visible | | |
 | 6.4 | New recommendations are created after fault injection + prediction run | `/load-balancing` count increases | | |
 
@@ -97,8 +97,8 @@ For the full validation procedure of each workflow, see the
 
 | # | Test | Expected result | Result | Notes |
 |---|---|---|---|---|
-| 7.1 | `POST /load-balancing/<id>/approve` succeeds | HTTP 200; recommendation status changes to `"approved"` or `"executed"` | | |
-| 7.2 | Approved recommendation no longer shows as `"pending"` | Status updated in `/load-balancing/<id>` response | | |
+| 7.1 | `POST /load-balancing/approve/<id>` succeeds | HTTP 200; top-level response `status` is `"approved"` and `action.action_status` is `"executed"` | | |
+| 7.2 | Approved recommendation no longer shows as `"pending"` | Re-fetch `/load-balancing?limit=10` and filter by id; `action_status` is `"executed"` | | |
 | 7.3 | Load Balancing page in dashboard updates after approval | Approved item moves from pending to completed/approved | | |
 | 7.4 | Node load changes after execution (if simulated) | Node load values reflect rebalancing | | |
 
@@ -108,10 +108,10 @@ For the full validation procedure of each workflow, see the
 
 | # | Test | Expected result | Result | Notes |
 |---|---|---|---|---|
-| 8.1 | Operator can approve a recommendation via the dashboard UI | Click Approve on a pending recommendation; status updates | | |
-| 8.2 | Operator can reject a recommendation via the dashboard UI | Click Reject on a pending recommendation; status updates to `"rejected"` | | |
-| 8.3 | `POST /load-balancing/<id>/approve` API call works | Status changes to `"approved"` or `"executed"` | | |
-| 8.4 | `POST /load-balancing/<id>/reject` API call works | Status changes to `"rejected"` | | |
+| 8.1 | Operator can approve a recommendation via the dashboard UI | Click Approve on a pending recommendation; `action_status` updates | | |
+| 8.2 | Operator can reject a recommendation via the dashboard UI | Click Reject on a pending recommendation; `action_status` updates to `"rejected"` | | |
+| 8.3 | `POST /load-balancing/approve/<id>` API call works | Top-level response `status` is `"approved"` and `action.action_status` is `"executed"` | | |
+| 8.4 | `POST /load-balancing/reject/<id>` API call works | Top-level response `status` is `"rejected"` and `action.action_status` is `"rejected"` | | |
 | 8.5 | Rejected recommendation shows `"Rejected"` on the dashboard | UI reflects the rejected status without page reload | | |
 
 ---
@@ -120,9 +120,9 @@ For the full validation procedure of each workflow, see the
 
 | # | Test | Expected result | Result | Notes |
 |---|---|---|---|---|
-| 9.1 | `GET /load-balancing/history?limit=5` returns records | JSON array with audit/history records | | |
-| 9.2 | Audit record for approved recommendation shows `action: "approved"` | Correct action label in history | | |
-| 9.3 | Audit record for rejected recommendation shows `action: "rejected"` | No execution timestamp for rejections | | |
+| 9.1 | `GET /load-balancing/decision-log?limit=5` returns records | JSON object with `decision_log` audit records | | |
+| 9.2 | Audit record for approved recommendation shows `operator_workflow` for approved/executed flow | Correct approval workflow label in decision log | | |
+| 9.3 | Audit record for rejected recommendation shows `action_status: "rejected"` | `result_observed` says no action executed | | |
 | 9.4 | Decision Audit Trail page in dashboard shows records | Audit table populated | | |
 | 9.5 | Each audit record includes a timestamp | `created_at` or `timestamp` field is non-null | | |
 
@@ -133,9 +133,9 @@ For the full validation procedure of each workflow, see the
 | # | Test | Expected result | Result | Notes |
 |---|---|---|---|---|
 | 10.1 | Balancing History page in dashboard shows executed actions | History table is populated after an approval | | |
-| 10.2 | `GET /load-balancing/history` returns executed balancing records | At least one record after approval workflow | | |
-| 10.3 | Rejected recommendations do **not** appear in execution history | No execution entry for rejected IDs | | |
-| 10.4 | History records include `action`, `substation_id`, and `timestamp` | Required fields present | | |
+| 10.2 | `GET /load-balancing/impact` returns balancing impact records | At least one record after approval workflow | | |
+| 10.3 | Rejected recommendations do **not** appear as executed successes | Rejected IDs have `feedback_status: "rejected"` or `action_status: "rejected"` | | |
+| 10.4 | Impact records include `action_id`, `source_node`, `target_node`, `load_shifted`, `trigger_reason`, and `created_at` | Required fields present | | |
 | 10.5 | Oldest records are preserved (no truncation without pagination) | Use `?limit=50` to confirm older records persist | | |
 
 ---

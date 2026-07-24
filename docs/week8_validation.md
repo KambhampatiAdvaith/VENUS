@@ -94,7 +94,7 @@ and appears on the live dashboard with correct freshness indicators.
 (Invoke-WebRequest http://127.0.0.1:8000/telemetry/latest).Content
 ```
 
-Expected: a JSON object containing `substation_id`, `voltage`, `current`,
+Expected: a JSON object containing `substation`, `voltage`, `current`,
 `temperature`, `load`, `frequency`, and timestamp fields
 (`generated_at`, `database_written_at`).
 
@@ -213,8 +213,8 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8000/predictions/run
 (Invoke-WebRequest "http://127.0.0.1:8000/predictions?limit=5").Content
 ```
 
-Expected: at least one row where `predicted_fault` is `true` or
-`probability` is above 0.5.
+Expected: at least one row where `predicted_fault` is not `"normal"` or
+`anomaly` is `true`.
 
 **Step 5 — Confirm faults are visible in the faults endpoint**
 
@@ -238,7 +238,7 @@ simulation time.
 
 - `POST /telemetry/simulate/fault` success response.
 - Telemetry row with anomaly flag visible in `/telemetry` output.
-- Prediction row with `predicted_fault: true` or high `probability`.
+- Prediction row with `predicted_fault != "normal" or anomaly = true`.
 - Dashboard Alerts page screenshot showing the new alert.
 
 ### Troubleshooting notes
@@ -280,7 +280,7 @@ outcome is recorded in balancing history and the decision audit trail.
 (Invoke-WebRequest "http://127.0.0.1:8000/load-balancing?limit=5").Content
 ```
 
-Expected: a list of recommendations, at least one with `status` of `"pending"`
+Expected: a list of recommendations, at least one with `action_status` of `"pending"`
 or `"recommended"`.
 
 If no recommendations exist, trigger a high-load simulation and run predictions:
@@ -302,39 +302,54 @@ Replace `<id>` with the actual recommendation ID:
 
 ```powershell
 Invoke-RestMethod -Method Post `
-  -Uri "http://127.0.0.1:8000/load-balancing/<id>/approve" `
+  -Uri "http://127.0.0.1:8000/load-balancing/approve/<id>" `
   -ContentType "application/json"
 ```
 
-Expected: the response shows the recommendation status is now `"approved"` or
-`"executed"`.
+Expected: the response has top-level `"status": "approved"` and the returned
+`action.action_status` is `"executed"`.
 
-**Step 4 — Confirm execution in load-balancing history**
+**Step 4 — Confirm execution in the recent load-balancing list**
 
 ```powershell
 (Invoke-WebRequest "http://127.0.0.1:8000/load-balancing?limit=5").Content
 ```
 
-The previously pending recommendation should now have `status` of `"approved"`,
-`"executed"`, or `"completed"`.
+The previously pending recommendation should now have `action_status` of
+`"executed"`.
 
-**Step 5 — Verify the decision audit trail**
+If you need to confirm by ID, filter the returned list manually for the `id`
+copied in Step 2.
+
+**Step 5 — Verify balancing impact/history evidence**
 
 ```powershell
-(Invoke-WebRequest "http://127.0.0.1:8000/load-balancing/history?limit=5").Content
+(Invoke-WebRequest "http://127.0.0.1:8000/load-balancing/impact?limit=5").Content
 ```
 
 Expected: a balancing history record that references the approved
-recommendation, including `action`, `timestamp`, and outcome fields.
+recommendation, including `action_id`, `source_node`, `target_node`,
+`load_shifted`, `trigger_reason`, `action_status`, `feedback_status`, and
+impact fields.
 
-**Step 6 — Verify on the dashboard**
+**Step 6 — Verify the decision audit trail**
+
+```powershell
+(Invoke-WebRequest "http://127.0.0.1:8000/load-balancing/decision-log?limit=5").Content
+```
+
+Expected: a decision log entry that references the approved recommendation,
+including `decision_id`, `prediction_trigger`, `decision_taken`,
+`action_status`, `operator_workflow`, `result_observed`, and `audit_notes`.
+
+**Step 7 — Verify on the dashboard**
 
 Open `http://localhost:3000` and navigate to:
 
 - **Load Balancing** page — confirm the recommendation status is updated.
 - **Balancing History** page — confirm the execution is listed.
-- **Decision Audit Trail** page — confirm the audit record with `"approved"`
-  action is present.
+- **Decision Audit Trail** page — confirm the audit record shows the approval
+  workflow and executed `action_status`.
 
 ### Expected evidence
 
@@ -350,7 +365,7 @@ Open `http://localhost:3000` and navigate to:
 | `/load-balancing` is empty | No predictions above risk threshold | Run fault injection + `POST /predictions/run` |
 | Approval returns 404 | Wrong recommendation ID | Re-fetch `/load-balancing` and use the correct `id` |
 | Status stays "pending" after approval | Execution not triggered | Check backend logs for execution errors |
-| Audit trail empty | History not written | Verify the load-balancing execution route writes to history |
+| Audit trail empty | Decision log not written | Verify `/load-balancing/decision-log` directly |
 
 ---
 
@@ -371,7 +386,7 @@ balancing action is executed.
 ### Preconditions
 
 - Backend is running and healthy.
-- At least one recommendation with `status` of `"pending"` exists (from
+- At least one recommendation with `action_status` of `"pending"` exists (from
   Workflow 3 or by injecting another high-load event).
 
 ### Step-by-step validation procedure
@@ -382,7 +397,7 @@ balancing action is executed.
 (Invoke-WebRequest "http://127.0.0.1:8000/load-balancing?limit=10").Content
 ```
 
-Copy the `id` of a recommendation with `status: "pending"`.
+Copy the `id` of a recommendation with `action_status: "pending"`.
 
 **Step 2 — Reject the recommendation**
 
@@ -390,35 +405,39 @@ Replace `<id>` with the actual recommendation ID:
 
 ```powershell
 Invoke-RestMethod -Method Post `
-  -Uri "http://127.0.0.1:8000/load-balancing/<id>/reject" `
+  -Uri "http://127.0.0.1:8000/load-balancing/reject/<id>" `
   -ContentType "application/json"
 ```
 
-Expected: the response shows `status` changed to `"rejected"`.
+Expected: the response shows `action_status` changed to `"rejected"`.
 
-**Step 3 — Confirm status is rejected**
+**Step 3 — Confirm action status is rejected**
 
 ```powershell
-(Invoke-WebRequest "http://127.0.0.1:8000/load-balancing/<id>").Content
+(Invoke-WebRequest "http://127.0.0.1:8000/load-balancing?limit=10").Content
 ```
 
-Expected: `"status": "rejected"`.
+Expected: the returned list includes the copied `id` with
+`"action_status": "rejected"`. Filter the returned list manually by `id`.
 
 **Step 4 — Confirm audit trail records the rejection**
 
 ```powershell
-(Invoke-WebRequest "http://127.0.0.1:8000/load-balancing/history?limit=5").Content
+(Invoke-WebRequest "http://127.0.0.1:8000/load-balancing/decision-log?limit=5").Content
 ```
 
-Expected: an audit record with `action` set to `"rejected"` and no
-`executed_at` or execution timestamp — confirming no balancing action was
-performed.
+Expected: a decision log entry with `action_status` set to `"rejected"` and
+`result_observed` indicating no action was executed.
 
 **Step 5 — Verify no balancing action was executed**
 
-The balancing history record for this recommendation must **not** show an
-outcome or execution confirmation.  The recommendation count in the executed
-load-balancing list must not have increased from Step 1.
+The balancing impact record for this recommendation should show
+`feedback_status: "rejected"` or `action_status: "rejected"`, not an executed
+success outcome.
+
+```powershell
+(Invoke-WebRequest "http://127.0.0.1:8000/load-balancing/impact?limit=5").Content
+```
 
 **Step 6 — Verify on the dashboard**
 
@@ -432,8 +451,8 @@ Navigate to:
 
 ### Expected evidence
 
-- API response from the reject endpoint showing `"status": "rejected"`.
-- `/load-balancing/history` output showing a rejection record.
+- API response from the reject endpoint showing `"action_status": "rejected"`.
+- `/load-balancing/decision-log` output showing a rejection record.
 - Dashboard screenshot: Recommendations page with rejected status visible.
 - Dashboard screenshot: Decision Audit Trail showing rejection entry.
 - Confirmation that Balancing History has no new execution for this ID.
@@ -444,7 +463,7 @@ Navigate to:
 |---|---|---|
 | Reject endpoint returns 404 | Wrong ID or route not implemented | Check route definitions in backend; verify ID |
 | Status stays "pending" | Reject route not persisting the update | Check backend logs for DB write errors |
-| Audit trail does not show rejection | History write missing for rejections | Verify the reject route also writes a history record |
+| Audit trail does not show rejection | Decision log entry missing for rejections | Verify `/load-balancing/decision-log` directly |
 
 ---
 

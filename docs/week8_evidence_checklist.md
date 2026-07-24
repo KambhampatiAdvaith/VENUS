@@ -69,7 +69,7 @@ For the step-by-step procedures that produce each piece of evidence, see the
 |---|---|---|---|
 | 5.1 | Predictions page in dashboard | Screenshot showing recent prediction rows | |
 | 5.2 | `GET /predictions/metrics` API response | PowerShell: `(Invoke-WebRequest http://127.0.0.1:8000/predictions/metrics).Content` — screenshot or copy | |
-| 5.3 | At least one prediction with `predicted_fault: true` | Screenshot or API output showing a high-risk prediction | |
+| 5.3 | At least one prediction with `predicted_fault != "normal" or anomaly = true` | Screenshot or API output showing a high-risk prediction | |
 | 5.4 | AI evaluation Markdown report | Reuse `benchmark_results/ai_evaluation_YYYYMMDD_HHMMSS.md` from Week 7, or regenerate — see note below | |
 
 > **Week 7 reuse note:** The AI evaluation report from Week 7 benchmarks covers
@@ -91,7 +91,7 @@ For the step-by-step procedures that produce each piece of evidence, see the
 |---|---|---|---|
 | 6.1 | Recommendations page showing pending items | Screenshot with at least one pending recommendation visible | |
 | 6.2 | `GET /load-balancing` API response | PowerShell: `(Invoke-WebRequest http://127.0.0.1:8000/load-balancing?limit=5).Content` — screenshot or copy | |
-| 6.3 | Recommendation details (id, action, substation) | Screenshot or API output showing all key fields | |
+| 6.3 | Recommendation details (`id`, `action_status`, `source_node`, `target_node`, `load_shifted`, `trigger_reason`) | Screenshot or API output showing all key fields | |
 
 ---
 
@@ -100,9 +100,9 @@ For the step-by-step procedures that produce each piece of evidence, see the
 | # | Evidence item | How to capture | Status |
 |---|---|---|---|
 | 7.1 | Dashboard before approval (pending status visible) | Screenshot of the pending recommendation | |
-| 7.2 | Dashboard after approval (status updated) | Screenshot showing `"approved"` or `"executed"` status | |
-| 7.3 | Approval API response | PowerShell terminal screenshot showing `POST /load-balancing/<id>/approve` result | |
-| 7.4 | Rejection API response | PowerShell terminal screenshot showing `POST /load-balancing/<id>/reject` result | |
+| 7.2 | Dashboard after approval (`action_status` updated) | Screenshot showing executed/approved workflow status | |
+| 7.3 | Approval API response | PowerShell terminal screenshot showing `POST /load-balancing/approve/<id>` result | |
+| 7.4 | Rejection API response | PowerShell terminal screenshot showing `POST /load-balancing/reject/<id>` result | |
 | 7.5 | Dashboard after rejection (rejected status visible) | Screenshot showing `"Rejected"` status on the recommendation | |
 
 ---
@@ -112,8 +112,8 @@ For the step-by-step procedures that produce each piece of evidence, see the
 | # | Evidence item | How to capture | Status |
 |---|---|---|---|
 | 8.1 | Balancing History page in dashboard | Screenshot showing executed actions after an approval | |
-| 8.2 | `GET /load-balancing/history` API response | PowerShell: `(Invoke-WebRequest http://127.0.0.1:8000/load-balancing/history?limit=5).Content` | |
-| 8.3 | Confirmation that rejected recommendations have no history entry | Compare history before/after rejection; no new executed entry | |
+| 8.2 | `GET /load-balancing/impact` API response | PowerShell: `(Invoke-WebRequest http://127.0.0.1:8000/load-balancing/impact?limit=5).Content` | |
+| 8.3 | Confirmation that rejected recommendations are not executed successes | Compare `/load-balancing/impact` before/after rejection; rejected entry should show `feedback_status: "rejected"` or `action_status: "rejected"` | |
 
 ---
 
@@ -121,9 +121,9 @@ For the step-by-step procedures that produce each piece of evidence, see the
 
 | # | Evidence item | How to capture | Status |
 |---|---|---|---|
-| 9.1 | Decision Audit Trail page in dashboard | Screenshot showing audit records with actions and timestamps | |
-| 9.2 | Audit record for an approved recommendation | Screenshot or API output showing `action: "approved"` with timestamp | |
-| 9.3 | Audit record for a rejected recommendation | Screenshot or API output showing `action: "rejected"` with no execution timestamp | |
+| 9.1 | Decision Audit Trail page in dashboard | Screenshot showing audit records with decision details and timestamps | |
+| 9.2 | Audit record for an approved recommendation | Screenshot or API output from `/load-balancing/decision-log?limit=5` showing approved/executed workflow | |
+| 9.3 | Audit record for a rejected recommendation | Screenshot or API output from `/load-balancing/decision-log?limit=5` showing `action_status: "rejected"` and no action executed | |
 
 ---
 
