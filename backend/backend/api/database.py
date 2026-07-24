@@ -50,6 +50,19 @@ TELEMETRY_TIMESTAMP_COLUMNS_MIGRATION = """
 """
 
 
+TELEMETRY_INDEXES_MIGRATION = """
+    CREATE INDEX IF NOT EXISTS idx_telemetry_substation_effective_time
+      ON telemetry (
+        substation,
+        (COALESCE(database_written_at, "timestamp")) DESC,
+        id DESC
+      );
+
+    CREATE INDEX IF NOT EXISTS idx_telemetry_database_written_at
+      ON telemetry (database_written_at DESC);
+"""
+
+
 def get_engine():
     return engine
 
@@ -57,6 +70,7 @@ def get_engine():
 def ensure_telemetry_timestamp_columns() -> None:
     with engine.begin() as connection:
         connection.execute(text(TELEMETRY_TIMESTAMP_COLUMNS_MIGRATION))
+        connection.execute(text(TELEMETRY_INDEXES_MIGRATION))
 
 
 def get_db():

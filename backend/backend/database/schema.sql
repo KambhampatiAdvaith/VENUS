@@ -28,6 +28,16 @@ ALTER TABLE telemetry
     ADD COLUMN IF NOT EXISTS kafka_received_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS database_written_at TIMESTAMPTZ DEFAULT NOW();
 
+CREATE INDEX IF NOT EXISTS idx_telemetry_substation_effective_time
+    ON telemetry (
+        substation,
+        (COALESCE(database_written_at, "timestamp")) DESC,
+        id DESC
+    );
+
+CREATE INDEX IF NOT EXISTS idx_telemetry_database_written_at
+    ON telemetry (database_written_at DESC);
+
 CREATE TABLE IF NOT EXISTS faults (
     id SERIAL PRIMARY KEY,
     substation VARCHAR(20) NOT NULL,
