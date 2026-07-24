@@ -33,6 +33,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy import text
+
+from backend.api.database import get_engine
+
 
 # ---------------------------------------------------------------------------
 # Simulator endpoints that insert rows into the DB
@@ -81,6 +85,22 @@ def _get_telemetry_row_count(base_url: str, timeout: float = 10.0) -> int | None
             return body.get("telemetry_count") or body.get("total_telemetry")
     except Exception:
         return None
+
+
+def _get_row_count_direct_db() -> tuple[int | None, str | None]:
+    """
+    Return the current telemetry row count using the backend database helper.
+    The benchmark should not require a production API endpoint for this metric.
+    """
+    try:
+        engine = get_engine()
+        with engine.begin() as connection:
+            row_count = connection.execute(
+                text("SELECT COUNT(*) FROM telemetry")
+            ).scalar_one()
+        return int(row_count), None
+    except Exception as exc:
+        return None, str(exc)
 
 
 def _get_row_count_via_health(base_url: str, timeout: float = 10.0) -> int | None:
@@ -200,15 +220,21 @@ def benchmark_db_row_growth(
 ) -> dict[str, Any]:
     """
     Measure telemetry row growth before/after sending simulate requests.
-    Uses the /dashboard/metrics or /telemetry/count endpoint when available.
+    Prefers direct DB counting and falls back to API-derived counts when available.
     """
     print("\n--- DB Row Growth ---")
 
     row_count_before: int | None = None
     row_count_after: int | None = None
 
-    # Try to read row count before
-    row_count_before = _get_row_count_via_health(base_url, timeout)
+    # Prefer direct DB count. This avoids requiring a production /telemetry/count endpoint.
+    row_count_before, db_error_before = _get_row_count_direct_db()
+    if row_count_before is None:
+        print(
+            "  Direct DB row count unavailable before run; "
+            f"falling back to API count if available. Error: {db_error_before}"
+        )
+        row_count_before = _get_row_count_via_health(base_url, timeout)
     if row_count_before is None:
         row_count_before = _get_telemetry_row_count(base_url, timeout)
     print(f"  Row count before : {row_count_before if row_count_before is not None else 'unavailable'}")
@@ -239,8 +265,14 @@ def benchmark_db_row_growth(
     # Brief pause to allow DB writes to flush
     time.sleep(0.5)
 
-    # Try to read row count after
-    row_count_after = _get_row_count_via_health(base_url, timeout)
+    # Prefer direct DB count after the run as well.
+    row_count_after, db_error_after = _get_row_count_direct_db()
+    if row_count_after is None:
+        print(
+            "  Direct DB row count unavailable after run; "
+            f"falling back to API count if available. Error: {db_error_after}"
+        )
+        row_count_after = _get_row_count_via_health(base_url, timeout)
     if row_count_after is None:
         row_count_after = _get_telemetry_row_count(base_url, timeout)
     print(f"  Row count after  : {row_count_after if row_count_after is not None else 'unavailable'}")
@@ -252,7 +284,10 @@ def benchmark_db_row_growth(
         rows_per_sec = round(rows_inserted / elapsed, 2) if elapsed > 0 else 0.0
         print(f"  Rows inserted    : {rows_inserted} ({rows_per_sec} rows/s)")
     else:
-        print("  Row count unavailable — no dedicated /telemetry/count endpoint.")
+        print(
+            "  Row count unavailable — direct DB count failed and no API count "
+            "fallback was available. Rows/sec will be N/A."
+        )
 
     return {
         "row_count_before": row_count_before,
