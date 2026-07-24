@@ -11,6 +11,7 @@ from backend.api.database import get_engine
 from backend.api.ws_manager import manager
 from backend.edge.edge_anomaly_detector import edge_detector
 from backend.utils.logging import get_logger
+from simulator.realism import build_normal_grid_telemetry, build_overload_grid_telemetry
 
 
 router = APIRouter()
@@ -20,53 +21,11 @@ logger = get_logger("backend.api.telemetry_simulator")
 
 
 def build_normal_telemetry() -> list[dict[str, Any]]:
-    return [
-        {
-            "substation": "A",
-            "voltage": round(random.uniform(224, 232), 2),
-            "current": round(random.uniform(24, 34), 2),
-            "temperature": round(random.uniform(35, 45), 2),
-            "load": round(random.uniform(42, 63), 2),
-            "frequency": round(random.uniform(49.8, 50.2), 2),
-        },
-        {
-            "substation": "B",
-            "voltage": round(random.uniform(222, 231), 2),
-            "current": round(random.uniform(25, 36), 2),
-            "temperature": round(random.uniform(36, 48), 2),
-            "load": round(random.uniform(45, 68), 2),
-            "frequency": round(random.uniform(49.8, 50.2), 2),
-        },
-        {
-            "substation": "C",
-            "voltage": round(random.uniform(225, 233), 2),
-            "current": round(random.uniform(22, 33), 2),
-            "temperature": round(random.uniform(34, 44), 2),
-            "load": round(random.uniform(38, 60), 2),
-            "frequency": round(random.uniform(49.8, 50.2), 2),
-        },
-    ]
+    return [dict(reading) for reading in build_normal_grid_telemetry()]
 
 
 def build_overload_telemetry(source_node: str) -> list[dict[str, Any]]:
-    readings = build_normal_telemetry()
-
-    for reading in readings:
-        if reading["substation"] == source_node:
-            reading["load"] = round(random.uniform(88, 98), 2)
-            reading["temperature"] = round(random.uniform(72, 86), 2)
-            reading["current"] = round(random.uniform(45, 56), 2)
-            reading["voltage"] = round(random.uniform(205, 216), 2)
-            reading["frequency"] = round(random.uniform(49.2, 49.7), 2)
-
-        else:
-            reading["load"] = round(random.uniform(35, 58), 2)
-            reading["temperature"] = round(random.uniform(33, 45), 2)
-            reading["current"] = round(random.uniform(20, 32), 2)
-            reading["voltage"] = round(random.uniform(224, 234), 2)
-            reading["frequency"] = round(random.uniform(49.8, 50.2), 2)
-
-    return readings
+    return [dict(reading) for reading in build_overload_grid_telemetry(source_node)]
 
 
 def generate_telemetry_cycle() -> tuple[str, list[dict[str, Any]]]:
@@ -269,6 +228,20 @@ def simulate_overload_c_telemetry():
     return {
         "status": "success",
         "scenario": "overload_c",
+        "count": len(inserted_rows),
+        "readings": inserted_rows,
+    }
+
+
+@router.post("/telemetry/simulate/fault")
+def simulate_fault_telemetry():
+    source_node = random.choice(["A", "B", "C"])
+    readings = build_overload_telemetry(source_node)
+    inserted_rows = insert_telemetry(readings)
+
+    return {
+        "status": "success",
+        "scenario": "fault",
         "count": len(inserted_rows),
         "readings": inserted_rows,
     }
