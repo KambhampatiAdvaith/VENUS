@@ -1,6 +1,7 @@
 import json
 import os
 import time
+from datetime import UTC, datetime
 from typing import Any, Callable
 
 from dotenv import load_dotenv
@@ -80,8 +81,11 @@ def process_telemetry_message(
     kafka_message: dict[str, Any],
     on_telemetry_inserted: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any] | None:
+    kafka_received_at = datetime.now(UTC)
+
     data = kafka_message.get("data", kafka_message)
     data = normalize_telemetry_payload(data)
+    data["kafka_received_at"] = kafka_received_at
 
     inserted = insert_telemetry(data)
 

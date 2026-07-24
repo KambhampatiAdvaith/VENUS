@@ -8,11 +8,22 @@ export type TelemetryFreshness = {
 };
 
 
+/**
+ * Computes freshness from the best available timestamp.
+ *
+ * Week 7: prefers `database_written_at` (ingestion time) over the payload
+ * `timestamp` so that timezone-shifted simulator timestamps do not make live
+ * inserts appear stale. Falls back to `timestamp` when the ingestion field is
+ * absent (older records, pre-migration rows).
+ */
 export function getTelemetryFreshness(
     timestamp: string | null | undefined,
     now = new Date(),
+    databaseWrittenAt?: string | null,
 ): TelemetryFreshness {
-    if (!timestamp) {
+    const effectiveTimestamp = databaseWrittenAt ?? timestamp;
+
+    if (!effectiveTimestamp) {
         return {
             lastTelemetryUpdate: "N/A",
             dataAge: "No telemetry data",
@@ -20,7 +31,7 @@ export function getTelemetryFreshness(
         };
     }
 
-    const telemetryTime = new Date(timestamp);
+    const telemetryTime = new Date(effectiveTimestamp);
     const ageMs = now.getTime() - telemetryTime.getTime();
 
     if (!Number.isFinite(ageMs)) {

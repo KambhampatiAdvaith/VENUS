@@ -25,7 +25,11 @@ export default async function Telemetry() {
     console.error("Failed to fetch telemetry data:", error);
   }
 
-  const telemetryFreshness = getTelemetryFreshness(telemetryData[0]?.timestamp);
+  const telemetryFreshness = getTelemetryFreshness(
+    telemetryData[0]?.timestamp,
+    new Date(),
+    telemetryData[0]?.database_written_at,
+  );
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">

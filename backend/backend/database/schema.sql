@@ -19,6 +19,15 @@ ALTER TABLE telemetry
     ADD COLUMN IF NOT EXISTS edge_model VARCHAR(100),
     ADD COLUMN IF NOT EXISTS edge_processed_at TIMESTAMPTZ;
 
+-- Week 7: latency measurement and timestamp normalization.
+-- generated_at: when the telemetry was produced by the simulator/source.
+-- kafka_received_at: when the Kafka consumer received/processed the message.
+-- database_written_at: when the record was inserted into the database.
+ALTER TABLE telemetry
+    ADD COLUMN IF NOT EXISTS generated_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS kafka_received_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS database_written_at TIMESTAMPTZ DEFAULT NOW();
+
 CREATE TABLE IF NOT EXISTS faults (
     id SERIAL PRIMARY KEY,
     substation VARCHAR(20) NOT NULL,

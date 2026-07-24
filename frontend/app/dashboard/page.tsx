@@ -16,6 +16,7 @@ import {
   LoadBalancingAction,
   LoadBalancingImpact,
   LoadBalancingSummary,
+  LatencyMetrics,
 } from "../../services/api";
 
 export const dynamic = "force-dynamic";
@@ -80,6 +81,15 @@ const fallbackLoadBalancingSummary: LoadBalancingSummary = {
   success_rate: 0,
   average_load_reduction: 0,
   average_risk_reduction: 0,
+};
+
+
+const fallbackLatencyMetrics: LatencyMetrics = {
+  sample_count: 0,
+  avg_latency_ms: null,
+  min_latency_ms: null,
+  max_latency_ms: null,
+  median_latency_ms: null,
 };
 
 
@@ -230,6 +240,7 @@ export default async function Dashboard() {
   let loadBalancingActions = fallbackLoadBalancingActions;
   let latestLoadBalancingImpact: LoadBalancingImpact | null = null;
   let loadBalancingSummary = fallbackLoadBalancingSummary;
+  let latencyMetrics = fallbackLatencyMetrics;
 
   try {
     const [
@@ -240,6 +251,7 @@ export default async function Dashboard() {
       loadBalancingActionsResponse,
       latestLoadBalancingImpactResponse,
       loadBalancingSummaryResponse,
+      latencyMetricsResponse,
     ] = await Promise.all([
       api.getDashboardMetrics(),
       api.getNodes(),
@@ -248,6 +260,7 @@ export default async function Dashboard() {
       api.getLoadBalancingActions(8),
       api.getLatestLoadBalancingImpact(),
       api.getLoadBalancingSummary(),
+      api.getLatencyMetrics(),
     ]);
 
     metrics = metricsResponse;
@@ -257,12 +270,17 @@ export default async function Dashboard() {
     loadBalancingActions = loadBalancingActionsResponse;
     latestLoadBalancingImpact = latestLoadBalancingImpactResponse;
     loadBalancingSummary = loadBalancingSummaryResponse;
+    latencyMetrics = latencyMetricsResponse;
   } catch (error) {
     console.error("Failed to fetch dashboard data:", error);
   }
 
   const loadChartData = buildLoadChartData(telemetry);
-  const telemetryFreshness = getTelemetryFreshness(telemetry[0]?.timestamp);
+  const telemetryFreshness = getTelemetryFreshness(
+    telemetry[0]?.timestamp,
+    new Date(),
+    telemetry[0]?.database_written_at,
+  );
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
@@ -312,17 +330,81 @@ export default async function Dashboard() {
           ) : null}
         </div>
 
+        {/* Latency Metrics */}
+        {latencyMetrics.sample_count > 0 && (
+          <section className="mb-8">
+            <h2 className="text-xl font-semibold mb-3 text-slate-300">
+              End-to-End Latency Metrics
+            </h2>
+
+            <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-slate-800">
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Samples
+                    </th>
+
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Avg Latency
+                    </th>
+
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Min Latency
+                    </th>
+
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Max Latency
+                    </th>
+
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Median Latency
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr>
+                    <td className="p-3 border border-slate-700">
+                      {latencyMetrics.sample_count}
+                    </td>
+
+                    <td className="p-3 border border-slate-700">
+                      {latencyMetrics.avg_latency_ms != null
+                        ? `${latencyMetrics.avg_latency_ms} ms`
+                        : "N/A"}
+                    </td>
+
+                    <td className="p-3 border border-slate-700">
+                      {latencyMetrics.min_latency_ms != null
+                        ? `${latencyMetrics.min_latency_ms} ms`
+                        : "N/A"}
+                    </td>
+
+                    <td className="p-3 border border-slate-700">
+                      {latencyMetrics.max_latency_ms != null
+                        ? `${latencyMetrics.max_latency_ms} ms`
+                        : "N/A"}
+                    </td>
+
+                    <td className="p-3 border border-slate-700">
+                      {latencyMetrics.median_latency_ms != null
+                        ? `${latencyMetrics.median_latency_ms} ms`
+                        : "N/A"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
         {/* Main Metrics */}
         <section>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
             <MetricCard
               title="Total Nodes"
               value={String(metrics.total_nodes)}
-            />
-
-            <MetricCard
-              title="Average Load"
-              value={`${metrics.avg_load}%`}
             />
 
             <MetricCard

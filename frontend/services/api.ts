@@ -13,6 +13,10 @@ export type TelemetryRecord = {
     edge_anomaly_score?: number | null;
     edge_model?: string | null;
     edge_processed_at?: string | null;
+    // Week 7: latency measurement fields
+    generated_at?: string | null;
+    kafka_received_at?: string | null;
+    database_written_at?: string | null;
 };
 
 
@@ -164,6 +168,15 @@ export type LoadBalancingDecisionLogSummary = {
 };
 
 
+export type LatencyMetrics = {
+    sample_count: number;
+    avg_latency_ms: number | null;
+    min_latency_ms: number | null;
+    max_latency_ms: number | null;
+    median_latency_ms: number | null;
+};
+
+
 async function apiFetch<T>(
     endpoint: string,
     options?: RequestInit,
@@ -310,5 +323,10 @@ export const api = {
         return apiFetch<LoadBalancingDecisionLogSummary>(
             "/load-balancing/decision-log/summary",
         );
+    },
+
+
+    getLatencyMetrics(): Promise<LatencyMetrics> {
+        return apiFetch<LatencyMetrics>("/telemetry/latency");
     },
 };

@@ -18,6 +18,11 @@ class TelemetryRecord(BaseModel):
     edge_model: str | None = None
     edge_processed_at: datetime | None = None
 
+    # Week 7: latency measurement fields
+    generated_at: datetime | None = None
+    kafka_received_at: datetime | None = None
+    database_written_at: datetime | None = None
+
 
 class TelemetryResponse(TelemetryRecord):
     pass

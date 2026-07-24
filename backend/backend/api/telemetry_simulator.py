@@ -115,6 +115,7 @@ def apply_edge_anomaly_detection(
             {
                 **payload,
                 "timestamp": timestamp,
+                "generated_at": timestamp,
             }
         )
 
@@ -136,7 +137,9 @@ def insert_telemetry(readings: list[dict[str, Any]]) -> list[dict[str, Any]]:
             edge_anomaly,
             edge_anomaly_score,
             edge_model,
-            edge_processed_at
+            edge_processed_at,
+            generated_at,
+            database_written_at
         )
         VALUES (
             :substation,
@@ -149,17 +152,25 @@ def insert_telemetry(readings: list[dict[str, Any]]) -> list[dict[str, Any]]:
             :edge_anomaly,
             :edge_anomaly_score,
             :edge_model,
-            :edge_processed_at
+            :edge_processed_at,
+            :generated_at,
+            :database_written_at
         )
     """
 
-    timestamp = datetime.now(UTC)
-    rows = apply_edge_anomaly_detection(readings, timestamp)
+    now_utc = datetime.now(UTC)
+    rows = apply_edge_anomaly_detection(readings, now_utc)
+
+    # Attach database_written_at to each row for the insert
+    rows_with_written_at = [
+        {**row, "database_written_at": now_utc}
+        for row in rows
+    ]
 
     with engine.begin() as connection:
-        connection.execute(text(query), rows)
+        connection.execute(text(query), rows_with_written_at)
 
-    return rows
+    return rows_with_written_at
 
 
 async def telemetry_simulation_loop() -> None:
