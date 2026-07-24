@@ -10,6 +10,7 @@ from backend.ai.feature_engineering import (
     FEATURE_COLUMNS,
     load_latest_telemetry_per_substation,
 )
+from backend.utils.logging import get_logger
 
 
 MODEL_DIR = Path(__file__).resolve().parent / "models"
@@ -20,6 +21,8 @@ LABEL_ENCODER_PATH = MODEL_DIR / "label_encoder.joblib"
 
 ALERT_CONFIDENCE_THRESHOLD = 0.8
 RECENT_FAULT_WINDOW_MINUTES = 10
+
+logger = get_logger("backend.ai.predict")
 
 
 def load_models():
@@ -170,7 +173,7 @@ def predict_latest(on_fault_created: Callable[[dict], None] | None = None):
     telemetry_dataframe = load_latest_telemetry_per_substation()
 
     if telemetry_dataframe.empty:
-        print("No telemetry data found for prediction.")
+        logger.info("No telemetry data found for prediction.")
         return []
 
     feature_values = telemetry_dataframe[FEATURE_COLUMNS]

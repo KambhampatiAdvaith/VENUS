@@ -9,6 +9,7 @@ from kafka import KafkaConsumer
 
 from backend.database.writer import insert_telemetry
 from backend.edge.edge_anomaly_detector import edge_detector
+from backend.utils.logging import BackoffState, get_logger, retry_with_backoff
 
 
 load_dotenv()
@@ -17,35 +18,41 @@ load_dotenv()
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 KAFKA_TELEMETRY_TOPIC = os.getenv("KAFKA_TELEMETRY_TOPIC", "venus.telemetry")
 
+logger = get_logger("backend.kafka.telemetry_consumer")
+
 
 def create_consumer() -> KafkaConsumer:
-    while True:
-        try:
-            consumer = KafkaConsumer(
-                KAFKA_TELEMETRY_TOPIC,
-                bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                group_id="venus-telemetry-db-writer",
-                auto_offset_reset="latest",
-                enable_auto_commit=True,
-                value_deserializer=lambda value: json.loads(value.decode("utf-8")),
+    consumer = retry_with_backoff(
+        lambda: KafkaConsumer(
+            KAFKA_TELEMETRY_TOPIC,
+            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+            group_id="venus-telemetry-db-writer",
+            auto_offset_reset="latest",
+            enable_auto_commit=True,
+            value_deserializer=lambda value: json.loads(value.decode("utf-8")),
 
-                # Prevent kafka-python-ng from trying broker-version auto-detection,
-                # which can fail on Windows/Python 3.12 with:
-                # UnrecognizedBrokerVersion / Invalid file descriptor.
-                api_version=(3, 6, 0),
-                request_timeout_ms=30000,
-                session_timeout_ms=10000,
-                heartbeat_interval_ms=3000,
-                consumer_timeout_ms=1000,
-            )
-
-            print(f"[KAFKA] Telemetry consumer connected to {KAFKA_TELEMETRY_TOPIC}")
-            return consumer
-
-        except Exception as error:
-            print(f"[KAFKA] Telemetry consumer connection failed: {error}")
-            print("[KAFKA] Retrying in 3 seconds...")
-            time.sleep(3)
+            # Prevent kafka-python-ng from trying broker-version auto-detection,
+            # which can fail on Windows/Python 3.12 with:
+            # UnrecognizedBrokerVersion / Invalid file descriptor.
+            api_version=(3, 6, 0),
+            request_timeout_ms=30000,
+            session_timeout_ms=10000,
+            heartbeat_interval_ms=3000,
+            consumer_timeout_ms=1000,
+        ),
+        logger=logger,
+        operation_name=f"Telemetry consumer connection to {KAFKA_TELEMETRY_TOPIC}",
+        initial_delay=1.0,
+        max_delay=15.0,
+        factor=2.0,
+        jitter=0.5,
+    )
+    logger.info(
+        "Telemetry consumer connected to topic=%s on bootstrap_servers=%s",
+        KAFKA_TELEMETRY_TOPIC,
+        KAFKA_BOOTSTRAP_SERVERS,
+    )
+    return consumer
 
 
 def normalize_telemetry_payload(data: dict[str, Any]) -> dict[str, Any]:
@@ -98,13 +105,20 @@ def process_telemetry_message(
 def start_telemetry_consumer(
     on_telemetry_inserted: Callable[[dict[str, Any]], None] | None = None,
 ) -> None:
+    restart_backoff = BackoffState(
+        initial_delay=1.0,
+        max_delay=15.0,
+        factor=2.0,
+        jitter=0.5,
+    )
+
     while True:
         consumer = None
 
         try:
             consumer = create_consumer()
-
-            print("[CONSUMER] Waiting for telemetry messages...")
+            restart_backoff.reset()
+            logger.info("Waiting for telemetry messages.")
 
             for message in consumer:
                 try:
@@ -118,32 +132,35 @@ def start_telemetry_consumer(
                     if data is None:
                         continue
 
-                    print(
-                        f"[CONSUMER] Telemetry processed | "
-                        f"substation={data.get('substation')} | "
-                        f"edge_anomaly={data.get('edge_anomaly')} | "
-                        f"edge_score={data.get('edge_anomaly_score')} | "
-                        f"offset={message.offset}"
+                    logger.debug(
+                        "Telemetry processed | substation=%s | edge_anomaly=%s | edge_score=%s | offset=%s",
+                        data.get("substation"),
+                        data.get("edge_anomaly"),
+                        data.get("edge_anomaly_score"),
+                        message.offset,
                     )
 
-                except Exception as error:
-                    print(f"[CONSUMER] Failed to process telemetry message: {error}")
+                except Exception:
+                    logger.exception("Failed to process telemetry message.")
 
         except KeyboardInterrupt:
-            print("[KAFKA] Telemetry consumer stopped by user.")
+            logger.info("Telemetry consumer stopped by user.")
             break
 
-        except Exception as error:
-            print(f"[KAFKA] Telemetry consumer crashed: {error}")
-            print("[KAFKA] Restarting consumer in 3 seconds...")
-            time.sleep(3)
+        except Exception:
+            delay = restart_backoff.next_delay()
+            logger.exception(
+                "Telemetry consumer crashed. Restarting in %.1f seconds.",
+                delay,
+            )
+            time.sleep(delay)
 
         finally:
             if consumer is not None:
                 try:
                     consumer.close()
                 except Exception:
-                    pass
+                    logger.warning("Failed to close telemetry consumer cleanly.")
 
 
 if __name__ == "__main__":

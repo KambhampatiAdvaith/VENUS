@@ -33,6 +33,10 @@ python -m uvicorn backend.api.main:app --reload
 - `POST /load-balancing/recommend`
 - `GET /load-balancing/pending?limit=10`
 
+## Reliability notes
+
+See `/home/runner/work/VENUS/VENUS/docs/reliability.md` for the current backend logging format, retry/backoff behavior, tolerated failures, and Windows PowerShell-friendly log inspection commands.
+
 ## Existing database migration note
 
 If your local database predates the current backend, rerun `python -m backend.database.init_db` or apply the updated `backend/database/schema.sql` statements manually so `predictions`, `faults`, `load_balancing_actions`, and the telemetry edge columns all exist before starting the API.
