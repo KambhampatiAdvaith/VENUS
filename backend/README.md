@@ -35,7 +35,7 @@ python -m uvicorn backend.api.main:app --reload
 
 ## Reliability notes
 
-See `/home/runner/work/VENUS/VENUS/docs/reliability.md` for the current backend logging format, retry/backoff behavior, tolerated failures, and Windows PowerShell-friendly log inspection commands.
+See [Reliability, Retry, and Logging](../docs/reliability.md) for the current backend logging format, retry/backoff behavior, tolerated failures, and Windows PowerShell-friendly log inspection commands.
 
 ## Existing database migration note
 
