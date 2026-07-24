@@ -70,6 +70,7 @@ docker-compose -f docker-compose.cloud.yml up --build
 - [Final Performance Benchmarking](docs/week8_benchmarking.md)
 - [Resource Utilization Profile](docs/week8_resource_profile.md)
 - [Simulator Realism Enhancement](docs/simulator_realism.md)
+- [Error Handling and UI/UX Polish](docs/week8_error_handling.md)
 
 ---
 

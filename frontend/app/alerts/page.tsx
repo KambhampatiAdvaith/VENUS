@@ -31,11 +31,13 @@ function formatSeverity(severity: string): string {
 
 export default async function Alerts() {
   let faults = fallbackFaults;
+  let apiError = false;
 
   try {
     faults = await api.getFaults(100);
   } catch (error) {
     console.error("Failed to fetch fault data:", error);
+    apiError = true;
   }
 
   return (
@@ -62,10 +64,25 @@ export default async function Alerts() {
           </div>
         </div>
 
+        {apiError && (
+          <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-300">
+            <p className="font-semibold">Unable to load alerts</p>
+            <p className="text-sm mt-1">
+              The backend could not be reached. Make sure the V.E.N.U.S backend is running, then refresh the page.
+            </p>
+          </div>
+        )}
+
         <div className="space-y-4">
           {faults.length === 0 ? (
-            <div className="bg-slate-900 p-5 rounded-xl text-slate-400">
-              No fault alerts available.
+            <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 text-slate-400">
+              <p className="font-semibold text-slate-300">No fault alerts yet</p>
+              <p className="text-sm mt-1">
+                Alerts appear here when a fault event is detected. To generate one, inject a fault via the simulator:
+              </p>
+              <p className="text-sm mt-2 font-mono text-slate-500">
+                POST /telemetry/simulate/fault
+              </p>
             </div>
           ) : (
             faults.map((fault) => (

@@ -129,6 +129,7 @@ export default async function Analytics() {
   let faults = fallbackFaults;
   let nodes = fallbackNodes;
   let metrics = fallbackMetrics;
+  let apiError = false;
 
   try {
     const [
@@ -149,6 +150,7 @@ export default async function Analytics() {
     metrics = metricsResponse;
   } catch (error) {
     console.error("Failed to fetch analytics data:", error);
+    apiError = true;
   }
 
   const peakLoad = getPeakLoad(telemetry);
@@ -213,6 +215,15 @@ export default async function Analytics() {
             </p>
           ) : null}
         </div>
+
+        {apiError && (
+          <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-300">
+            <p className="font-semibold">Unable to load analytics data</p>
+            <p className="text-sm mt-1">
+              The backend could not be reached. Make sure the V.E.N.U.S backend is running, then refresh the page.
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">

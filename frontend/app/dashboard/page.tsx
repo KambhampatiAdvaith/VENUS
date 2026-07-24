@@ -233,6 +233,7 @@ export default async function Dashboard() {
   let latestLoadBalancingImpact: LoadBalancingImpact | null = null;
   let loadBalancingSummary = fallbackLoadBalancingSummary;
   let latencyMetrics = fallbackLatencyMetrics;
+  let apiError = false;
 
   try {
     const [
@@ -265,6 +266,7 @@ export default async function Dashboard() {
     latencyMetrics = latencyMetricsResponse;
   } catch (error) {
     console.error("Failed to fetch dashboard data:", error);
+    apiError = true;
   }
 
   const loadChartData = buildLoadChartData(telemetry);
@@ -321,6 +323,15 @@ export default async function Dashboard() {
             </p>
           ) : null}
         </div>
+
+        {apiError && (
+          <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-300">
+            <p className="font-semibold">Unable to load dashboard data</p>
+            <p className="text-sm mt-1">
+              The backend could not be reached. Make sure the V.E.N.U.S backend is running, then refresh the page.
+            </p>
+          </div>
+        )}
 
         {/* Latency Metrics */}
         {latencyMetrics.sample_count > 0 && (

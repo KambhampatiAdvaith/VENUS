@@ -164,6 +164,27 @@ For the step-by-step procedures that produce each piece of evidence, see the
 
 ---
 
+## 12. Error Handling and UI/UX Polish
+
+| # | Evidence item | How to capture | Status |
+|---|---|---|---|
+| 12.1 | Telemetry empty state | Open `http://localhost:3000/telemetry` with an empty database; screenshot showing "No telemetry records yet" message and simulator hint | |
+| 12.2 | Alerts empty state | Open `http://localhost:3000/alerts` with no faults; screenshot showing "No fault alerts yet" message and fault injection hint | |
+| 12.3 | Node Status empty state | Open `http://localhost:3000/nodes` with an empty database; screenshot showing "No node status records yet" message | |
+| 12.4 | Predictions empty state | Open `http://localhost:3000/predictions` with no prediction records; screenshot showing "No AI prediction records yet" message | |
+| 12.5 | API error banner — any page | Stop the backend, open any page (e.g. `/telemetry`); screenshot showing the red "Unable to load" banner | |
+| 12.6 | Prediction cycle failure | With backend down, click "Refresh Now" on `/predictions`; screenshot showing the yellow "Prediction cycle failed" banner | |
+
+> **How to create an empty-database state:** Stop the backend, clear the
+> database tables (or point to a fresh DB), then restart the backend and open
+> the pages listed above.
+>
+> **How to trigger a backend-down error:** Stop the backend service while the
+> frontend is running, then navigate to any dashboard page and screenshot the
+> red error banner.
+
+---
+
 ## Evidence summary
 
 After collecting all items, record the final status here:
@@ -181,6 +202,7 @@ After collecting all items, record the final status here:
 | Decision Audit Trail | | | |
 | Benchmark Results | | | |
 | Reliability Logs | | | |
+| Error Handling / UI Polish | | | |
 | **Total** | | | |
 
 ---
@@ -192,4 +214,5 @@ After collecting all items, record the final status here:
 - [Final Performance Benchmarking](week8_benchmarking.md)
 - [Resource Utilization Profile](week8_resource_profile.md)
 - [Simulator Realism Enhancement](simulator_realism.md)
+- [Error Handling and UI/UX Polish](week8_error_handling.md)
 - [Week 7 Evidence Pack](week7_evidence_pack.md)

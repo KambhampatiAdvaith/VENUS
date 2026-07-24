@@ -81,12 +81,15 @@ export default function Predictions() {
     const [loading, setLoading] = useState(true);
     const [running, setRunning] = useState(false);
     const [lastUpdated, setLastUpdated] = useState("");
+    const [fetchError, setFetchError] = useState(false);
+    const [runError, setRunError] = useState(false);
 
 
     const loadPredictions = useCallback(async () => {
         try {
             const predictionRecords = await api.getPredictions(50);
             setPredictions(predictionRecords);
+            setFetchError(false);
             setLastUpdated(
                 new Date().toLocaleTimeString("en-GB", {
                     hour: "2-digit",
@@ -96,6 +99,7 @@ export default function Predictions() {
             );
         } catch (error) {
             console.error("Failed to fetch AI predictions:", error);
+            setFetchError(true);
         } finally {
             setLoading(false);
         }
@@ -106,10 +110,12 @@ export default function Predictions() {
         try {
             setRunning(true);
             setLoading(true);
+            setRunError(false);
             await api.runPredictions();
             await loadPredictions();
         } catch (error) {
             console.error("Failed to run AI prediction cycle:", error);
+            setRunError(true);
             setLoading(false);
         } finally {
             setRunning(false);
@@ -194,6 +200,24 @@ export default function Predictions() {
                         </p>
                     </div>
                 </div>
+
+                {fetchError && (
+                    <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-300">
+                        <p className="font-semibold">Unable to load predictions</p>
+                        <p className="text-sm mt-1">
+                            The backend could not be reached. Make sure the V.E.N.U.S backend is running and try refreshing.
+                        </p>
+                    </div>
+                )}
+
+                {runError && (
+                    <div className="mb-6 rounded-xl border border-yellow-500/40 bg-yellow-500/10 p-4 text-yellow-300">
+                        <p className="font-semibold">Prediction cycle failed</p>
+                        <p className="text-sm mt-1">
+                            The AI prediction cycle could not complete. Check that the backend is running and telemetry data is available.
+                        </p>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
@@ -285,9 +309,15 @@ export default function Predictions() {
                                 <tr>
                                     <td
                                         colSpan={7}
-                                        className="p-6 text-center text-slate-400 border border-slate-700"
+                                        className="p-6 border border-slate-700"
                                     >
-                                        No AI prediction records available.
+                                        <p className="font-semibold text-slate-300">No AI prediction records yet</p>
+                                        <p className="text-sm mt-1 text-slate-400">
+                                            Run a prediction cycle to generate results, or ensure telemetry data is available first:
+                                        </p>
+                                        <p className="text-sm mt-1 font-mono text-slate-500">
+                                            POST /telemetry/simulate/normal → then click &quot;Refresh Now&quot;
+                                        </p>
                                     </td>
                                 </tr>
                             ) : (
