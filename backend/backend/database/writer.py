@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 from backend.database.connection import get_connection
+from backend.utils.logging import get_logger
 
 
 SEVERITY_MAP = {
@@ -9,6 +10,8 @@ SEVERITY_MAP = {
     "load_surge": "high",
     "frequency_deviation": "critical",
 }
+
+logger = get_logger("backend.database.writer")
 
 
 def insert_telemetry(data: dict) -> dict | None:
@@ -60,9 +63,10 @@ def insert_telemetry(data: dict) -> dict | None:
     try:
         cursor.execute(query, values)
         connection.commit()
-        print(
-            f"[DATABASE] Telemetry inserted for Substation {data['substation']} "
-            f"| edge_score={data.get('edge_anomaly_score')}"
+        logger.debug(
+            "Telemetry inserted for substation=%s | edge_score=%s",
+            data["substation"],
+            data.get("edge_anomaly_score"),
         )
         result = dict(data)
         result["database_written_at"] = now_utc
@@ -70,9 +74,12 @@ def insert_telemetry(data: dict) -> dict | None:
             result["generated_at"] = generated_at
         return result
 
-    except Exception as error:
+    except Exception:
         connection.rollback()
-        print(f"[DATABASE] Failed to insert telemetry: {error}")
+        logger.exception(
+            "Failed to insert telemetry for substation=%s.",
+            data.get("substation"),
+        )
         return None
 
     finally:
@@ -112,9 +119,10 @@ def insert_fault(data: dict) -> dict | None:
         cursor.execute(query, values)
         inserted_fault = cursor.fetchone()
         connection.commit()
-        print(
-            f"[DATABASE] Fault inserted for Substation {data['substation']} "
-            f"with type {fault_type}"
+        logger.debug(
+            "Fault inserted for substation=%s with fault_type=%s",
+            data["substation"],
+            fault_type,
         )
         return {
             "id": inserted_fault[0],
@@ -124,9 +132,13 @@ def insert_fault(data: dict) -> dict | None:
             "timestamp": inserted_fault[4],
         }
 
-    except Exception as error:
+    except Exception:
         connection.rollback()
-        print(f"[DATABASE] Failed to insert fault: {error}")
+        logger.exception(
+            "Failed to insert fault for substation=%s with fault_type=%s.",
+            data.get("substation"),
+            fault_type,
+        )
         return None
 
     finally:

@@ -10,11 +10,13 @@ from sqlalchemy import text
 from backend.api.database import get_engine
 from backend.api.ws_manager import manager
 from backend.edge.edge_anomaly_detector import edge_detector
+from backend.utils.logging import get_logger
 
 
 router = APIRouter()
 
 _simulator_started = False
+logger = get_logger("backend.api.telemetry_simulator")
 
 
 def build_normal_telemetry() -> list[dict[str, Any]]:
@@ -185,10 +187,11 @@ async def telemetry_simulation_loop() -> None:
                 1 for row in inserted_rows if row.get("edge_anomaly") is True
             )
 
-            print(
-                f"[telemetry-simulator] Inserted {scenario} telemetry cycle "
-                f"for {len(inserted_rows)} substations. "
-                f"Edge anomalies detected: {anomaly_count}."
+            logger.info(
+                "Inserted %s telemetry cycle for %s substations. Edge anomalies detected: %s.",
+                scenario,
+                len(inserted_rows),
+                anomaly_count,
             )
 
             await manager.broadcast(
@@ -200,8 +203,8 @@ async def telemetry_simulation_loop() -> None:
                 },
             )
 
-        except Exception as error:
-            print(f"[telemetry-simulator] Error: {error}")
+        except Exception:
+            logger.exception("Telemetry simulator cycle failed.")
 
         await asyncio.sleep(interval_seconds)
 
@@ -216,7 +219,7 @@ def start_telemetry_simulator() -> None:
 
     asyncio.create_task(telemetry_simulation_loop())
 
-    print("[telemetry-simulator] Started.")
+    logger.info("Telemetry simulator started.")
 
 
 @router.post("/telemetry/simulate")

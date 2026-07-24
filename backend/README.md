@@ -17,7 +17,7 @@ Common optional variables:
 ## Fresh-start setup
 
 ```bash
-cd /home/runner/work/VENUS/VENUS/backend
+cd backend
 python -m pip install -r requirements.txt
 python -m backend.database.init_db
 python -m uvicorn backend.api.main:app --reload
@@ -32,6 +32,10 @@ python -m uvicorn backend.api.main:app --reload
 - `GET /load-balancing?limit=5`
 - `POST /load-balancing/recommend`
 - `GET /load-balancing/pending?limit=10`
+
+## Reliability notes
+
+See [Reliability, Retry, and Logging](../docs/reliability.md) for the current backend logging format, retry/backoff behavior, tolerated failures, and Windows PowerShell-friendly log inspection commands.
 
 ## Existing database migration note
 
