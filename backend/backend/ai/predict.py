@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Callable
 
 import joblib
 from sqlalchemy import text
@@ -93,14 +94,14 @@ def create_ai_alert_if_needed(
     probability: float,
     anomaly: bool,
     anomaly_score: float,
-):
+) -> dict | None:
     high_confidence_fault = (
         predicted_fault != "normal"
         and probability >= ALERT_CONFIDENCE_THRESHOLD
     )
 
     if not high_confidence_fault and not anomaly:
-        return
+        return None
 
     fault_type = (
         "ai_anomaly_detected"
@@ -132,6 +133,7 @@ def create_ai_alert_if_needed(
             :severity,
             NOW()
         )
+        RETURNING id, substation, fault_type, severity, timestamp
     """
 
     with engine.begin() as connection:
@@ -145,19 +147,21 @@ def create_ai_alert_if_needed(
         ).scalar()
 
         if recent_duplicate:
-            return
+            return None
 
-        connection.execute(
+        inserted_fault = connection.execute(
             text(insert_sql),
             {
                 "substation": substation,
                 "fault_type": fault_type,
                 "severity": severity,
             },
-        )
+        ).mappings().first()
+
+    return dict(inserted_fault) if inserted_fault is not None else None
 
 
-def predict_latest():
+def predict_latest(on_fault_created: Callable[[dict], None] | None = None):
     engine = get_engine()
     ensure_predictions_table(engine)
 
@@ -198,7 +202,7 @@ def predict_latest():
             anomaly_score=anomaly_score,
         )
 
-        create_ai_alert_if_needed(
+        created_fault = create_ai_alert_if_needed(
             engine=engine,
             substation=substation,
             predicted_fault=predicted_fault,
@@ -206,6 +210,9 @@ def predict_latest():
             anomaly=anomaly,
             anomaly_score=anomaly_score,
         )
+
+        if created_fault is not None and on_fault_created is not None:
+            on_fault_created(created_fault)
 
         prediction_results.append(
             {

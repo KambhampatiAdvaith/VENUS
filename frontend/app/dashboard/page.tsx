@@ -5,6 +5,7 @@ import Navbar from "../../components/Navbar";
 import LoadBalancingControls from "../../components/LoadBalancingControls";
 import DecisionLogPanel from "../../components/DecisionLogPanel";
 import AutoRefreshControls from "../../components/AutoRefreshControls";
+import LiveUpdateBanner from "../../components/LiveUpdateBanner";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
 import {
   api,
@@ -281,7 +282,10 @@ export default async function Dashboard() {
             </p>
           </div>
 
-          <AutoRefreshControls label="Refresh Dashboard" />
+          <div className="flex flex-col items-start md:items-end gap-2">
+            <AutoRefreshControls label="Refresh Dashboard" />
+            <LiveUpdateBanner listenTo={["telemetry", "prediction", "fault", "load_balancing"]} />
+          </div>
         </div>
 
         <div

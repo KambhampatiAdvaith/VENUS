@@ -9,7 +9,7 @@ SEVERITY_MAP = {
 }
 
 
-def insert_telemetry(data: dict) -> None:
+def insert_telemetry(data: dict) -> dict | None:
     query = """
         INSERT INTO telemetry (
             substation,
@@ -51,17 +51,19 @@ def insert_telemetry(data: dict) -> None:
             f"[DATABASE] Telemetry inserted for Substation {data['substation']} "
             f"| edge_score={data.get('edge_anomaly_score')}"
         )
+        return data
 
     except Exception as error:
         connection.rollback()
         print(f"[DATABASE] Failed to insert telemetry: {error}")
+        return None
 
     finally:
         cursor.close()
         connection.close()
 
 
-def insert_fault(data: dict) -> None:
+def insert_fault(data: dict) -> dict | None:
     fault_type = data.get("fault_type")
 
     severity = data.get("severity")
@@ -75,7 +77,8 @@ def insert_fault(data: dict) -> None:
             severity,
             timestamp
         )
-        VALUES (%s, %s, %s, %s);
+        VALUES (%s, %s, %s, %s)
+        RETURNING id, substation, fault_type, severity, timestamp;
     """
 
     values = (
@@ -90,15 +93,24 @@ def insert_fault(data: dict) -> None:
 
     try:
         cursor.execute(query, values)
+        inserted_fault = cursor.fetchone()
         connection.commit()
         print(
             f"[DATABASE] Fault inserted for Substation {data['substation']} "
             f"with type {fault_type}"
         )
+        return {
+            "id": inserted_fault[0],
+            "substation": inserted_fault[1],
+            "fault_type": inserted_fault[2],
+            "severity": inserted_fault[3],
+            "timestamp": inserted_fault[4],
+        }
 
     except Exception as error:
         connection.rollback()
         print(f"[DATABASE] Failed to insert fault: {error}")
+        return None
 
     finally:
         cursor.close()

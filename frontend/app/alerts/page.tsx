@@ -2,6 +2,7 @@ import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import StatusBadge from "../../components/StatusBadge";
 import AutoRefreshControls from "../../components/AutoRefreshControls";
+import LiveUpdateBanner from "../../components/LiveUpdateBanner";
 import { api, FaultRecord } from "../../services/api";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +56,10 @@ export default async function Alerts() {
             </p>
           </div>
 
-          <AutoRefreshControls label="Refresh Alerts" />
+          <div className="flex flex-col items-start md:items-end gap-2">
+            <AutoRefreshControls label="Refresh Alerts" />
+            <LiveUpdateBanner listenTo={["fault", "prediction"]} />
+          </div>
         </div>
 
         <div className="space-y-4">

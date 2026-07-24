@@ -8,6 +8,7 @@ from fastapi import APIRouter
 from sqlalchemy import text
 
 from backend.api.database import get_engine
+from backend.api.ws_manager import manager
 from backend.edge.edge_anomaly_detector import edge_detector
 
 
@@ -177,6 +178,15 @@ async def telemetry_simulation_loop() -> None:
                 f"[telemetry-simulator] Inserted {scenario} telemetry cycle "
                 f"for {len(inserted_rows)} substations. "
                 f"Edge anomalies detected: {anomaly_count}."
+            )
+
+            await manager.broadcast(
+                "telemetry",
+                {
+                    "scenario": scenario,
+                    "count": len(inserted_rows),
+                    "edge_anomaly_count": anomaly_count,
+                },
             )
 
         except Exception as error:

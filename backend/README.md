@@ -9,6 +9,8 @@ Common optional variables:
 - `FRONTEND_URL` for a non-default frontend origin
 - `ENABLE_STARTUP_TELEMETRY_SIMULATOR=false` to keep the simulator disabled by default
 - `ENABLE_AI_PREDICTION_LOOP=false` to keep the prediction loop manual by default
+- `ENABLE_KAFKA_TELEMETRY_CONSUMER=true` starts the real Kafka telemetry consumer inside FastAPI and broadcasts telemetry WebSocket events after database writes.
+- `ENABLE_KAFKA_FAULT_CONSUMER=true` starts the real Kafka fault consumer inside FastAPI and broadcasts fault WebSocket events after database writes.
 - `TELEMETRY_SIMULATION_INTERVAL=15`
 - `KAFKA_BOOTSTRAP_SERVERS=localhost:9092`
 

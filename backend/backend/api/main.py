@@ -1,5 +1,6 @@
 import asyncio
 import os
+import threading
 from contextlib import suppress
 
 from dotenv import load_dotenv
@@ -9,13 +10,21 @@ from sqlalchemy import text
 
 from backend.ai.predict import predict_latest
 from backend.api.database import get_db
+from backend.api.live_broadcast import (
+    broadcast_fault,
+    broadcast_kafka_telemetry,
+    configure_live_broadcast_loop,
+)
 from backend.api.load_balancing import router as load_balancing_router
 from backend.api.predictions import router as predictions_router
-from backend.api.routes import dashboard, faults, nodes, telemetry
+from backend.api.routes import dashboard, faults, nodes, telemetry, websocket
+from backend.api.ws_manager import manager
 from backend.api.telemetry_simulator import (
     router as telemetry_simulator_router,
     start_telemetry_simulator,
 )
+from backend.kafka.fault_consumer import start_fault_consumer
+from backend.kafka.telemetry_consumer import start_telemetry_consumer
 
 
 load_dotenv()
@@ -38,6 +47,17 @@ def get_allowed_origins() -> list[str]:
     ]
 
     return [origin for origin in dict.fromkeys(origins) if origin]
+
+
+def start_daemon_thread(name: str, target, *args) -> threading.Thread:
+    thread = threading.Thread(
+        name=name,
+        target=target,
+        args=args,
+        daemon=True,
+    )
+    thread.start()
+    return thread
 
 
 app = FastAPI(
@@ -63,10 +83,13 @@ app.include_router(nodes.router)
 app.include_router(predictions_router)
 app.include_router(load_balancing_router)
 app.include_router(telemetry_simulator_router)
+app.include_router(websocket.router)
 
 
 @app.on_event("startup")
 async def startup_event():
+    configure_live_broadcast_loop(asyncio.get_running_loop())
+
     if is_enabled("ENABLE_STARTUP_TELEMETRY_SIMULATOR"):
         print("[telemetry-simulator] Startup simulator enabled.")
         start_telemetry_simulator()
@@ -79,6 +102,28 @@ async def startup_event():
     else:
         app.state.ai_prediction_task = None
         print("[ai-prediction-loop] Disabled by default. Run predictions manually.")
+
+    if is_enabled("ENABLE_KAFKA_TELEMETRY_CONSUMER"):
+        app.state.kafka_telemetry_thread = start_daemon_thread(
+            "venus-kafka-telemetry-consumer",
+            start_telemetry_consumer,
+            broadcast_kafka_telemetry,
+        )
+        print("[kafka-telemetry-consumer] Started with live WebSocket broadcast.")
+    else:
+        app.state.kafka_telemetry_thread = None
+        print("[kafka-telemetry-consumer] Disabled by default.")
+
+    if is_enabled("ENABLE_KAFKA_FAULT_CONSUMER"):
+        app.state.kafka_fault_thread = start_daemon_thread(
+            "venus-kafka-fault-consumer",
+            start_fault_consumer,
+            broadcast_fault,
+        )
+        print("[kafka-fault-consumer] Started with live WebSocket broadcast.")
+    else:
+        app.state.kafka_fault_thread = None
+        print("[kafka-fault-consumer] Disabled by default.")
 
 
 @app.on_event("shutdown")
@@ -129,8 +174,15 @@ def health_check():
 async def run_ai_prediction_loop():
     while True:
         try:
-            await asyncio.to_thread(predict_latest)
+            fault_events = []
+            await asyncio.to_thread(predict_latest, fault_events.append)
+            for fault_event in fault_events:
+                await manager.broadcast("fault", fault_event)
             print("V.E.N.U.S AI prediction cycle completed")
+            await manager.broadcast(
+                "prediction",
+                {"message": "V.E.N.U.S AI prediction cycle completed"},
+            )
         except Exception as error:
             print(f"V.E.N.U.S AI prediction cycle failed: {error}")
 
