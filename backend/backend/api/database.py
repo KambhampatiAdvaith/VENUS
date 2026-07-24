@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+from sqlalchemy import text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 
@@ -41,8 +42,21 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 
+TELEMETRY_TIMESTAMP_COLUMNS_MIGRATION = """
+    ALTER TABLE telemetry
+      ADD COLUMN IF NOT EXISTS generated_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS kafka_received_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS database_written_at TIMESTAMPTZ DEFAULT NOW();
+"""
+
+
 def get_engine():
     return engine
+
+
+def ensure_telemetry_timestamp_columns() -> None:
+    with engine.begin() as connection:
+        connection.execute(text(TELEMETRY_TIMESTAMP_COLUMNS_MIGRATION))
 
 
 def get_db():

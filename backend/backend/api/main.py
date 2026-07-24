@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from backend.ai.predict import predict_latest
-from backend.api.database import get_db
+from backend.api.database import get_db, ensure_telemetry_timestamp_columns
 from backend.api.live_broadcast import (
     broadcast_fault,
     broadcast_kafka_telemetry,
@@ -89,6 +89,7 @@ app.include_router(websocket.router)
 @app.on_event("startup")
 async def startup_event():
     configure_live_broadcast_loop(asyncio.get_running_loop())
+    ensure_telemetry_timestamp_columns()
 
     if is_enabled("ENABLE_STARTUP_TELEMETRY_SIMULATOR"):
         print("[telemetry-simulator] Startup simulator enabled.")

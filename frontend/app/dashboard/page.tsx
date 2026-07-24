@@ -412,6 +412,11 @@ export default async function Dashboard() {
               value={String(metrics.active_faults)}
             />
 
+            <MetricCard
+              title="Average Load"
+              value={`${metrics.avg_load}%`}
+            />
+
             <div
               className={`bg-slate-900 rounded-xl p-6 border ${getStatusBorder(
                 metrics.system_health
