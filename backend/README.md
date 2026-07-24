@@ -17,7 +17,7 @@ Common optional variables:
 ## Fresh-start setup
 
 ```bash
-cd /home/runner/work/VENUS/VENUS/backend
+cd backend
 python -m pip install -r requirements.txt
 python -m backend.database.init_db
 python -m uvicorn backend.api.main:app --reload

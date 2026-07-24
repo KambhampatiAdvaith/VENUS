@@ -66,7 +66,7 @@ Get-Content .\backend.log -Wait
 ### Shell
 
 ```bash
-cd /home/runner/work/VENUS/VENUS/backend
+cd backend
 python -m uvicorn backend.api.main:app --reload 2>&1 | tee backend.log
 tail -f backend.log
 ```
