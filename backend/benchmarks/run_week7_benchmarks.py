@@ -42,6 +42,7 @@ from typing import Any
 from benchmarks.api_latency_benchmark import run as run_api_latency
 from benchmarks.ai_evaluation_metrics import run as run_ai_eval
 from benchmarks.edge_cloud_comparison import run as run_edge_cloud
+from benchmarks.resource_utilization import run as run_resource_profile
 from benchmarks.telemetry_throughput_benchmark import run as run_throughput
 
 
@@ -295,10 +296,13 @@ def run(
     ai_eval_requests: int = 10,
     edge_cloud: bool = False,
     edge_cloud_requests: int = 10,
+    resource_profile: bool = False,
+    resource_profile_duration: float = 15.0,
+    resource_profile_interval: float = 1.0,
 ) -> None:
     run_ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
-    total_phases = 2 + int(ai_eval) + int(edge_cloud)
+    total_phases = 2 + int(ai_eval) + int(edge_cloud) + int(resource_profile)
 
     print("=" * 60)
     print("  V.E.N.U.S. Week 7 Benchmark Suite")
@@ -312,6 +316,8 @@ def run(
         print(f"  AI evaluation : enabled ({ai_eval_requests} req/endpoint)")
     if edge_cloud:
         print(f"  Edge vs cloud : enabled ({edge_cloud_requests} req/endpoint)")
+    if resource_profile:
+        print(f"  Resource profile : enabled ({resource_profile_duration}s / {resource_profile_interval}s interval)")
     print()
 
     _check_reachability(base_url)
@@ -356,6 +362,17 @@ def run(
         edge_cloud_results = run_edge_cloud(
             base_url=base_url,
             n_requests=edge_cloud_requests,
+            output_dir=output_dir,
+        )
+        phase += 1
+
+    # --- Optional phase: Resource utilization profile ---
+    if resource_profile:
+        print(f"\n[{phase}/{total_phases}] Running resource utilization profiler …")
+        run_resource_profile(
+            base_url=base_url,
+            duration_s=resource_profile_duration,
+            interval_s=resource_profile_interval,
             output_dir=output_dir,
         )
 
@@ -436,6 +453,24 @@ def main() -> None:
         default=10,
         help="Requests per edge/cloud endpoint for timing (default: 10, only used with --edge-cloud)",
     )
+    parser.add_argument(
+        "--resource-profile",
+        action="store_true",
+        default=False,
+        help="Also run resource utilization profiler after benchmarks (Week 8 evidence)",
+    )
+    parser.add_argument(
+        "--resource-profile-duration",
+        type=float,
+        default=15.0,
+        help="Resource profiling duration in seconds (default: 15, only used with --resource-profile)",
+    )
+    parser.add_argument(
+        "--resource-profile-interval",
+        type=float,
+        default=1.0,
+        help="Seconds between resource samples (default: 1, only used with --resource-profile)",
+    )
     args = parser.parse_args()
 
     if args.output_dir:
@@ -453,6 +488,9 @@ def main() -> None:
         ai_eval_requests=args.ai_eval_requests,
         edge_cloud=args.edge_cloud,
         edge_cloud_requests=args.edge_cloud_requests,
+        resource_profile=args.resource_profile,
+        resource_profile_duration=args.resource_profile_duration,
+        resource_profile_interval=args.resource_profile_interval,
     )
 
 
