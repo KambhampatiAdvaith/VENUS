@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from backend.database.connection import get_connection
 
 
@@ -22,10 +24,18 @@ def insert_telemetry(data: dict) -> dict | None:
             edge_anomaly,
             edge_anomaly_score,
             edge_model,
-            edge_processed_at
+            edge_processed_at,
+            generated_at,
+            kafka_received_at,
+            database_written_at
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
     """
+
+    now_utc = datetime.now(UTC)
+
+    # generated_at: prefer explicit field, fall back to payload timestamp
+    generated_at = data.get("generated_at") or data.get("timestamp")
 
     values = (
         data["substation"],
@@ -39,6 +49,9 @@ def insert_telemetry(data: dict) -> dict | None:
         data.get("edge_anomaly_score"),
         data.get("edge_model"),
         data.get("edge_processed_at"),
+        generated_at,
+        data.get("kafka_received_at"),
+        now_utc,
     )
 
     connection = get_connection()
@@ -51,7 +64,11 @@ def insert_telemetry(data: dict) -> dict | None:
             f"[DATABASE] Telemetry inserted for Substation {data['substation']} "
             f"| edge_score={data.get('edge_anomaly_score')}"
         )
-        return data
+        result = dict(data)
+        result["database_written_at"] = now_utc
+        if "generated_at" not in result:
+            result["generated_at"] = generated_at
+        return result
 
     except Exception as error:
         connection.rollback()

@@ -8,6 +8,10 @@ import AutoRefreshControls from "../../components/AutoRefreshControls";
 import LiveUpdateBanner from "../../components/LiveUpdateBanner";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
 import {
+  formatDisplayTime,
+  formatDisplayTimestamp,
+} from "../../services/timestamps";
+import {
   api,
   DashboardMetrics,
   NodeStatus,
@@ -16,6 +20,7 @@ import {
   LoadBalancingAction,
   LoadBalancingImpact,
   LoadBalancingSummary,
+  LatencyMetrics,
 } from "../../services/api";
 
 export const dynamic = "force-dynamic";
@@ -83,6 +88,15 @@ const fallbackLoadBalancingSummary: LoadBalancingSummary = {
 };
 
 
+const fallbackLatencyMetrics: LatencyMetrics = {
+  sample_count: 0,
+  avg_latency_ms: null,
+  min_latency_ms: null,
+  max_latency_ms: null,
+  median_latency_ms: null,
+};
+
+
 function formatHealthStatus(status: string): string {
   if (!status) {
     return "Unknown";
@@ -131,10 +145,7 @@ function buildLoadChartData(telemetry: TelemetryRecord[]): LoadChartData[] {
     .slice()
     .reverse()
     .map((item) => ({
-      time: new Date(item.timestamp).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      time: formatDisplayTime(item),
       load: item.load,
     }));
 }
@@ -187,15 +198,6 @@ function getRiskBorder(level: string): string {
 }
 
 
-function formatDateTime(timestamp: string | null): string {
-  if (!timestamp) {
-    return "N/A";
-  }
-
-  return new Date(timestamp).toLocaleString();
-}
-
-
 function getEffectivenessColor(effectiveness: string): string {
   if (effectiveness === "successful") {
     return "text-green-400";
@@ -230,6 +232,7 @@ export default async function Dashboard() {
   let loadBalancingActions = fallbackLoadBalancingActions;
   let latestLoadBalancingImpact: LoadBalancingImpact | null = null;
   let loadBalancingSummary = fallbackLoadBalancingSummary;
+  let latencyMetrics = fallbackLatencyMetrics;
 
   try {
     const [
@@ -240,6 +243,7 @@ export default async function Dashboard() {
       loadBalancingActionsResponse,
       latestLoadBalancingImpactResponse,
       loadBalancingSummaryResponse,
+      latencyMetricsResponse,
     ] = await Promise.all([
       api.getDashboardMetrics(),
       api.getNodes(),
@@ -248,6 +252,7 @@ export default async function Dashboard() {
       api.getLoadBalancingActions(8),
       api.getLatestLoadBalancingImpact(),
       api.getLoadBalancingSummary(),
+      api.getLatencyMetrics(),
     ]);
 
     metrics = metricsResponse;
@@ -257,12 +262,17 @@ export default async function Dashboard() {
     loadBalancingActions = loadBalancingActionsResponse;
     latestLoadBalancingImpact = latestLoadBalancingImpactResponse;
     loadBalancingSummary = loadBalancingSummaryResponse;
+    latencyMetrics = latencyMetricsResponse;
   } catch (error) {
     console.error("Failed to fetch dashboard data:", error);
   }
 
   const loadChartData = buildLoadChartData(telemetry);
-  const telemetryFreshness = getTelemetryFreshness(telemetry[0]?.timestamp);
+  const telemetryFreshness = getTelemetryFreshness(
+    telemetry[0]?.timestamp,
+    new Date(),
+    telemetry[0]?.database_written_at,
+  );
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
@@ -312,6 +322,75 @@ export default async function Dashboard() {
           ) : null}
         </div>
 
+        {/* Latency Metrics */}
+        {latencyMetrics.sample_count > 0 && (
+          <section className="mb-8">
+            <h2 className="text-xl font-semibold mb-3 text-slate-300">
+              End-to-End Latency Metrics
+            </h2>
+
+            <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-slate-800">
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Samples
+                    </th>
+
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Avg Latency
+                    </th>
+
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Min Latency
+                    </th>
+
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Max Latency
+                    </th>
+
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Median Latency
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr>
+                    <td className="p-3 border border-slate-700">
+                      {latencyMetrics.sample_count}
+                    </td>
+
+                    <td className="p-3 border border-slate-700">
+                      {latencyMetrics.avg_latency_ms != null
+                        ? `${latencyMetrics.avg_latency_ms} ms`
+                        : "N/A"}
+                    </td>
+
+                    <td className="p-3 border border-slate-700">
+                      {latencyMetrics.min_latency_ms != null
+                        ? `${latencyMetrics.min_latency_ms} ms`
+                        : "N/A"}
+                    </td>
+
+                    <td className="p-3 border border-slate-700">
+                      {latencyMetrics.max_latency_ms != null
+                        ? `${latencyMetrics.max_latency_ms} ms`
+                        : "N/A"}
+                    </td>
+
+                    <td className="p-3 border border-slate-700">
+                      {latencyMetrics.median_latency_ms != null
+                        ? `${latencyMetrics.median_latency_ms} ms`
+                        : "N/A"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
         {/* Main Metrics */}
         <section>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -321,13 +400,13 @@ export default async function Dashboard() {
             />
 
             <MetricCard
-              title="Average Load"
-              value={`${metrics.avg_load}%`}
+              title="Active Faults"
+              value={String(metrics.active_faults)}
             />
 
             <MetricCard
-              title="Active Faults"
-              value={String(metrics.active_faults)}
+              title="Average Load"
+              value={`${metrics.avg_load}%`}
             />
 
             <div
@@ -650,7 +729,9 @@ export default async function Dashboard() {
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400">Timestamp</span>
                     <span className="text-right text-sm">
-                      {formatDateTime(latestLoadBalancingImpact.created_at)}
+                      {formatDisplayTimestamp({
+                        created_at: latestLoadBalancingImpact.created_at,
+                      })}
                     </span>
                   </div>
                 </div>
@@ -740,7 +821,9 @@ export default async function Dashboard() {
                         </td>
 
                         <td className="p-4 border border-slate-700 text-sm text-slate-300">
-                          {formatDateTime(action.created_at)}
+                          {formatDisplayTimestamp({
+                            created_at: action.created_at,
+                          })}
                         </td>
                       </tr>
                     ))
@@ -838,9 +921,7 @@ export default async function Dashboard() {
 
                 <p className="text-slate-500 text-xs mt-5">
                   Last updated:{" "}
-                  {node.last_updated
-                    ? new Date(node.last_updated).toLocaleString()
-                    : "N/A"}
+                  {formatDisplayTimestamp({ timestamp: node.last_updated })}
                 </p>
               </div>
             ))}

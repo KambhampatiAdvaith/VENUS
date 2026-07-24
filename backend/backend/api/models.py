@@ -18,6 +18,9 @@ class Telemetry(Base):
     edge_anomaly_score = Column(Float, nullable=True)
     edge_model = Column(String(100), nullable=True)
     edge_processed_at = Column(DateTime(timezone=True), nullable=True)
+    generated_at = Column(DateTime(timezone=True), nullable=True)
+    kafka_received_at = Column(DateTime(timezone=True), nullable=True)
+    database_written_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class Fault(Base):

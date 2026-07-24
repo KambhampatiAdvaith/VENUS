@@ -5,6 +5,7 @@ import AutoRefreshControls from "../../components/AutoRefreshControls";
 import LoadBalancingStatusSummary from "../../components/LoadBalancingStatusSummary";
 import { api, NodeStatus, TelemetryRecord } from "../../services/api";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
+import { formatDisplayTime } from "../../services/timestamps";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +19,7 @@ function buildLoadChartData(telemetry: TelemetryRecord[]): LoadChartData[] {
     .slice()
     .reverse()
     .map((item) => ({
-      time: new Date(item.timestamp).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      time: formatDisplayTime(item),
       load: item.load,
     }));
 }
@@ -44,7 +42,11 @@ export default async function LoadBalancing() {
   }
 
   const loadChartData = buildLoadChartData(telemetry);
-  const telemetryFreshness = getTelemetryFreshness(telemetry[0]?.timestamp);
+  const telemetryFreshness = getTelemetryFreshness(
+    telemetry[0]?.timestamp,
+    new Date(),
+    telemetry[0]?.database_written_at,
+  );
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">

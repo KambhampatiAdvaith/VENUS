@@ -7,6 +7,7 @@ import {
     LoadBalancingDecisionLog,
     LoadBalancingDecisionLogSummary,
 } from "../services/api";
+import { formatDisplayTimestamp } from "../services/timestamps";
 
 
 const fallbackSummary: LoadBalancingDecisionLogSummary = {
@@ -19,15 +20,6 @@ const fallbackSummary: LoadBalancingDecisionLogSummary = {
     manual_decisions: 0,
     approval_mode_decisions: 0,
 };
-
-
-function formatDateTime(timestamp: string | null): string {
-    if (!timestamp) {
-        return "N/A";
-    }
-
-    return new Date(timestamp).toLocaleString();
-}
 
 
 function formatLabel(value: string): string {
@@ -295,7 +287,9 @@ export default function DecisionLogPanel() {
                                         </td>
 
                                         <td className="p-4 border border-slate-700 text-sm text-slate-300 min-w-[180px]">
-                                            {formatDateTime(entry.timestamp)}
+                                            {formatDisplayTimestamp({
+                                                created_at: entry.timestamp,
+                                            })}
                                         </td>
                                     </tr>
                                 ))

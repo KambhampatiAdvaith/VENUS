@@ -4,16 +4,12 @@ import AutoRefreshControls from "../../components/AutoRefreshControls";
 import LiveUpdateBanner from "../../components/LiveUpdateBanner";
 import { api, TelemetryRecord } from "../../services/api";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
+import { formatDisplayTimestamp } from "../../services/timestamps";
 
 export const dynamic = "force-dynamic";
 
 
 const fallbackTelemetry: TelemetryRecord[] = [];
-
-
-function formatTimestamp(timestamp: string): string {
-  return new Date(timestamp).toLocaleString();
-}
 
 
 export default async function Telemetry() {
@@ -25,7 +21,11 @@ export default async function Telemetry() {
     console.error("Failed to fetch telemetry data:", error);
   }
 
-  const telemetryFreshness = getTelemetryFreshness(telemetryData[0]?.timestamp);
+  const telemetryFreshness = getTelemetryFreshness(
+    telemetryData[0]?.timestamp,
+    new Date(),
+    telemetryData[0]?.database_written_at,
+  );
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
@@ -104,7 +104,11 @@ export default async function Telemetry() {
                 </th>
 
                 <th className="p-4 text-left border border-slate-700">
-                  Timestamp
+                  Ingested At
+                </th>
+
+                <th className="p-4 text-left border border-slate-700">
+                  Payload Timestamp
                 </th>
               </tr>
             </thead>
@@ -113,7 +117,7 @@ export default async function Telemetry() {
               {telemetryData.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="p-6 text-center text-slate-400 border border-slate-700"
                   >
                     No telemetry records available.
@@ -150,7 +154,11 @@ export default async function Telemetry() {
                     </td>
 
                     <td className="p-4 border border-slate-700 text-sm text-slate-300">
-                      {formatTimestamp(item.timestamp)}
+                      {formatDisplayTimestamp(item)}
+                    </td>
+
+                    <td className="p-4 border border-slate-700 text-sm text-slate-500">
+                      {formatDisplayTimestamp({ timestamp: item.timestamp })}
                     </td>
                   </tr>
                 ))
