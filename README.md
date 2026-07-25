@@ -185,7 +185,9 @@ The simulators periodically inject fault conditions automatically. To observe fa
 With the backend running and telemetry flowing:
 
 ```bash
+curl -X POST http://127.0.0.1:8000/predictions/run
 curl http://127.0.0.1:8000/predictions?limit=10
+curl http://127.0.0.1:8000/predictions/metrics
 ```
 
 The **AI Predictions** page (`/predictions`) shows risk scores in real time.
@@ -193,15 +195,24 @@ The **AI Predictions** page (`/predictions`) shows risk scores in real time.
 ### Trigger load balancing
 
 1. Open the **Load Balancing** page (`/load-balancing`).
-2. When nodes are flagged as overloaded (load > alert threshold), the engine generates recommendations.
-3. Approve or reject recommendations using the operator controls.
-4. Review the audit trail on the **Balancing History** page.
+2. Use **Create Recommendation** to generate a pending recommendation when an overload condition exists.
+3. Approve or reject pending recommendations using the operator controls.
+4. Review recent actions in the balancing history and audit log.
 
 Or via API:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/load-balancing/rebalance
-curl http://127.0.0.1:8000/load-balancing/history
+# Supervised recommendation workflow
+curl -X POST http://127.0.0.1:8000/load-balancing/recommend
+curl http://127.0.0.1:8000/load-balancing/pending?limit=10
+curl -X POST http://127.0.0.1:8000/load-balancing/approve/1   # replace 1 with a pending action id
+curl -X POST http://127.0.0.1:8000/load-balancing/reject/1    # replace 1 with a pending action id
+
+# Manual execution and history/audit inspection
+curl -X POST "http://127.0.0.1:8000/load-balancing/execute?execution_mode=manual"
+curl http://127.0.0.1:8000/load-balancing?limit=10
+curl http://127.0.0.1:8000/load-balancing/decision-log?limit=10
+curl http://127.0.0.1:8000/load-balancing/impact/latest
 ```
 
 ### Inspect latency and throughput
@@ -228,9 +239,9 @@ python -m benchmarks.run_week7_benchmarks --base-url http://127.0.0.1:8000 --res
 4. Start substation simulators (A, B, C)
 5. Open dashboard → confirm live data age < 30 s
 6. Check Alerts page for detected faults
-7. Open Predictions page for XGBoost risk scores
-8. Open Load Balancing page → approve a recommendation
-9. Check Balancing History for the audit record
+7. Run predictions → verify XGBoost risk scores on the Predictions page
+8. Open Load Balancing page → create and approve a recommendation
+9. Check balancing history and decision log for the audit record
 10. Adjust Settings (refresh interval, alert threshold) to tune the operator view
 
 ---
