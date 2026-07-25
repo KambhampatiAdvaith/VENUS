@@ -114,22 +114,21 @@ export default function Settings() {
         </h1>
 
         <p className="text-slate-400 mb-6">
-          Manage browser-local preferences for dashboard polling and frontend load alerts.
+          Operator preferences for live dashboard behaviour and load-alert visibility.
         </p>
 
-        {/* Local-only info banner */}
+        {/* Operator info banner */}
         <div className="mb-6 rounded-xl border border-blue-500/40 bg-blue-500/10 p-4 text-blue-200">
           <p className="font-semibold">
-            These settings are saved in this browser only
+            Operator dashboard preferences
           </p>
           <p className="text-sm mt-1">
-            All preferences below are stored in browser <code className="font-mono bg-blue-900/40 px-1 rounded">localStorage</code> and do not affect backend configuration, database schema, or Kafka/MQTT architecture.
-            They will reset if you clear your browser data or open the app in a different browser.
+            These controls adjust how the dashboard polls the backend and when nodes are flagged as overloaded. They are saved in this browser only and do not affect backend configuration, Kafka/MQTT pipeline, or database schema.
           </p>
         </div>
 
         {/* Current settings summary cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
           <div className="bg-slate-900 rounded-xl p-5 border border-slate-800">
             <p className="text-xs uppercase tracking-widest text-slate-500 mb-1">
               Refresh Interval
@@ -151,18 +150,6 @@ export default function Settings() {
             </p>
             <p className="text-slate-500 text-xs mt-1">
               Frontend load-alert level for balancing cards
-            </p>
-          </div>
-
-          <div className="bg-slate-900 rounded-xl p-5 border border-slate-800">
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-1">
-              Storage Scope
-            </p>
-            <p className="text-2xl font-bold text-emerald-400">
-              Browser local
-            </p>
-            <p className="text-slate-500 text-xs mt-1">
-              Only this browser on this device
             </p>
           </div>
         </div>
@@ -233,81 +220,18 @@ export default function Settings() {
           </div>
         </section>
 
-        {/* Section 3 — Future local preferences */}
-        <section className="mb-6">
-          <h2 className="text-lg font-semibold text-slate-200 mb-3">
-            Future Local Preferences
-            <span className="ml-2 text-xs font-normal bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">
-              Coming soon
-            </span>
-          </h2>
-
-          <div className="bg-slate-900 rounded-xl p-6 border border-slate-800 space-y-5 opacity-70">
-            <div>
-              <label className="block text-slate-400 font-medium mb-2">
-                Theme
-                <span className="ml-2 text-xs font-normal text-slate-500">
-                  (future local-only preference)
-                </span>
-              </label>
-
-              <select
-                value={settings.theme}
-                onChange={(event) =>
-                  updateSetting("theme", event.target.value)
-                }
-                disabled
-                className="w-full bg-slate-800 p-3 rounded-lg border border-slate-700 text-slate-400 cursor-not-allowed"
-              >
-                <option value="dark">Dark Mode</option>
-              </select>
-
-              <p className="text-slate-600 text-sm mt-1">
-                Theme switching is not yet active. This preference is saved locally for future UI theme support.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between bg-slate-800 p-4 rounded-lg border border-slate-700">
-              <div>
-                <p className="font-semibold text-slate-400">
-                  Fault Notifications
-                  <span className="ml-2 text-xs font-normal text-slate-500">
-                    (future local-only preference)
-                  </span>
-                </p>
-                <p className="text-slate-600 text-sm">
-                  Browser notification support is not yet active. Saved locally for future use.
-                </p>
-              </div>
-
-              <input
-                type="checkbox"
-                checked={settings.notificationsEnabled}
-                onChange={(event) =>
-                  updateSetting("notificationsEnabled", event.target.checked)
-                }
-                disabled
-                className="w-5 h-5 cursor-not-allowed opacity-50"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Section 4 — Demo tips */}
+        {/* Section 3 — Operational tips */}
         <section className="mb-8">
           <h2 className="text-lg font-semibold text-slate-200 mb-3">
-            Demo Tips
+            Operational Tips
           </h2>
 
           <div className="bg-slate-900 rounded-xl p-6 border border-slate-800 text-slate-400 text-sm space-y-2">
             <p>
-              <span className="text-slate-300 font-medium">Refresh interval</span> — lower values keep the dashboard more up-to-date during live demos; higher values reduce backend polling.
+              <span className="text-slate-300 font-medium">Refresh interval</span> — use a short interval (5–10 s) when monitoring live telemetry flowing through the MQTT → Kafka → backend pipeline. Increase the interval to reduce polling load during idle observation.
             </p>
             <p>
-              <span className="text-slate-300 font-medium">Alert threshold</span> — set to 70–80% for a realistic overload indicator when running the MQTT/Kafka simulator. The load-balancing page will highlight overloaded nodes when their load exceeds this value.
-            </p>
-            <p>
-              <span className="text-slate-300 font-medium">Storage</span> — these settings persist across browser sessions in <code className="font-mono bg-slate-800 px-1 rounded">localStorage</code>. They are not shared between browsers or team members.
+              <span className="text-slate-300 font-medium">Alert threshold</span> — set to 70–80% to see realistic overload indicators when the substation simulators are running. The load-balancing page highlights nodes whose reported load exceeds this value, making it easy to spot and respond to overload events.
             </p>
           </div>
         </section>
