@@ -1,3 +1,0 @@
-# Benchmark result files are generated locally and should not be committed.
-*.json
-*.md
