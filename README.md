@@ -246,6 +246,12 @@ python -m benchmarks.run_week7_benchmarks --base-url http://127.0.0.1:8000 --res
 
 ---
 
+## Deployment
+
+See the **[Deployment Guide](docs/deployment.md)** for instructions on hosting the backend on a Docker VPS and the frontend on Vercel.
+
+---
+
 ## Validation and testing
 
 | Guide | Purpose |
