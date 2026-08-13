@@ -91,6 +91,7 @@ Expected containers (all `Up`):
 | `venus-zookeeper` | Kafka coordination |
 | `venus-kafka` | Kafka broker |
 | `venus-kafka-init` | One-shot topic initializer (exits 0) |
+| `venus-init-db` | One-shot DB schema initializer (exits 0) |
 | `venus-mosquitto` | MQTT broker |
 | `venus-backend` | FastAPI backend (port 8000) |
 | `venus-mqtt-bridge` | MQTT-to-Kafka bridge |
@@ -115,11 +116,17 @@ venus.telemetry
 
 ### 6. Initialize / verify the database
 
-The backend auto-runs schema migrations on startup. Verify the tables exist:
+On the first run, the `venus-init-db` one-shot service applies `backend/database/schema.sql` automatically before the backend starts. Verify the tables exist:
 
 ```bash
 docker exec -it venus-postgres \
   psql -U venus -d venus_db -c "\dt"
+```
+
+If tables are missing, check the `venus-init-db` logs for errors:
+
+```bash
+docker compose -f docker-compose.prod.yml logs init-db
 ```
 
 ### 7. Test backend health and key endpoints
