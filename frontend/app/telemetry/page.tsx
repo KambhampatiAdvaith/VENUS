@@ -2,6 +2,7 @@ import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import AutoRefreshControls from "../../components/AutoRefreshControls";
 import LiveUpdateBanner from "../../components/LiveUpdateBanner";
+import LiveAnalysisCard from "../../components/LiveAnalysisCard";
 import { api, TelemetryRecord } from "../../services/api";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
 import { formatDisplayTimestamp } from "../../services/timestamps";
@@ -53,29 +54,50 @@ export default async function Telemetry() {
           </div>
         </div>
 
-        <div
-          className={`mb-8 rounded-xl border p-4 ${
+        <LiveAnalysisCard
+          title="Live Telemetry Stream"
+          headline={
             telemetryFreshness.isStale
-              ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-200"
-              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-          }`}
-        >
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <p className="font-semibold">
-              Last telemetry update: {telemetryFreshness.lastTelemetryUpdate}
-            </p>
-
-            <p>
-              Data age: {telemetryFreshness.dataAge}
-            </p>
-          </div>
-
-          {telemetryFreshness.isStale ? (
-            <p className="mt-2 text-sm">
-              Telemetry data is stale.
-            </p>
-          ) : null}
-        </div>
+              ? "Waiting for fresh telemetry"
+              : "Telemetry stream active"
+          }
+          subtext={
+            telemetryFreshness.isStale
+              ? "Telemetry data is stale; display will update when new data arrives."
+              : `${telemetryData.length} record${telemetryData.length !== 1 ? "s" : ""} loaded · updated ${telemetryFreshness.dataAge} ago.`
+          }
+          isStale={telemetryFreshness.isStale}
+          metrics={[
+            {
+              label: "Latest Voltage",
+              value:
+                telemetryData[0] != null
+                  ? `${telemetryData[0].voltage} V`
+                  : "N/A",
+            },
+            {
+              label: "Current Load",
+              value:
+                telemetryData[0] != null
+                  ? `${telemetryData[0].load}%`
+                  : "N/A",
+            },
+            {
+              label: "Temperature",
+              value:
+                telemetryData[0] != null
+                  ? `${telemetryData[0].temperature} °C`
+                  : "N/A",
+            },
+            {
+              label: "Frequency",
+              value:
+                telemetryData[0] != null
+                  ? `${telemetryData[0].frequency} Hz`
+                  : "N/A",
+            },
+          ]}
+        />
 
         {apiError && (
           <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-300">

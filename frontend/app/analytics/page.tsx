@@ -1,6 +1,8 @@
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import AutoRefreshControls from "../../components/AutoRefreshControls";
+import LiveUpdateBanner from "../../components/LiveUpdateBanner";
+import LiveAnalysisCard from "../../components/LiveAnalysisCard";
 import AnalyticsChart from "../../components/AnalyticsChart";
 import LoadDistributionChart from "../../components/LoadDistributionChart";
 import {
@@ -189,32 +191,32 @@ export default async function Analytics() {
             </p>
           </div>
 
-          <AutoRefreshControls label="Refresh Analytics" />
-        </div>
-
-        <div
-          className={`mb-8 rounded-xl border p-4 ${
-            telemetryFreshness.isStale
-              ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-200"
-              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-          }`}
-        >
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <p className="font-semibold">
-              Last telemetry update: {telemetryFreshness.lastTelemetryUpdate}
-            </p>
-
-            <p>
-              Data age: {telemetryFreshness.dataAge}
-            </p>
+          <div className="flex flex-col items-start md:items-end gap-2">
+            <AutoRefreshControls label="Refresh Analytics" />
+            <LiveUpdateBanner listenTo={["telemetry", "fault"]} />
           </div>
-
-          {telemetryFreshness.isStale ? (
-            <p className="mt-2 text-sm">
-              Telemetry data is stale.
-            </p>
-          ) : null}
         </div>
+
+        <LiveAnalysisCard
+          title="Live Performance Analysis"
+          headline={
+            telemetryFreshness.isStale
+              ? "Waiting for fresh data"
+              : "Performance analysis active"
+          }
+          subtext={
+            telemetryFreshness.isStale
+              ? "Analysis data is stale; display will update when new telemetry arrives."
+              : `Analysing ${telemetry.length} telemetry records · updated ${telemetryFreshness.dataAge} ago.`
+          }
+          isStale={telemetryFreshness.isStale}
+          metrics={[
+            { label: "Peak Load", value: `${peakLoad}%` },
+            { label: "Avg Voltage", value: `${avgVoltage} V` },
+            { label: "Efficiency", value: `${efficiency}%` },
+            { label: "Top Fault", value: mostCommonFault },
+          ]}
+        />
 
         {apiError && (
           <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-300">

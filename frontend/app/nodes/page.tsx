@@ -2,6 +2,8 @@ import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import StatusBadge from "../../components/StatusBadge";
 import AutoRefreshControls from "../../components/AutoRefreshControls";
+import LiveUpdateBanner from "../../components/LiveUpdateBanner";
+import LiveAnalysisCard from "../../components/LiveAnalysisCard";
 import { api, NodeStatus } from "../../services/api";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
 
@@ -73,32 +75,49 @@ export default async function Nodes() {
             </p>
           </div>
 
-          <AutoRefreshControls label="Refresh Nodes" />
-        </div>
-
-        <div
-          className={`mb-8 rounded-xl border p-4 ${
-            telemetryFreshness.isStale
-              ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-200"
-              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-          }`}
-        >
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <p className="font-semibold">
-              Last telemetry update: {telemetryFreshness.lastTelemetryUpdate}
-            </p>
-
-            <p>
-              Data age: {telemetryFreshness.dataAge}
-            </p>
+          <div className="flex flex-col items-start md:items-end gap-2">
+            <AutoRefreshControls label="Refresh Nodes" />
+            <LiveUpdateBanner listenTo={["telemetry", "fault"]} />
           </div>
-
-          {telemetryFreshness.isStale ? (
-            <p className="mt-2 text-sm">
-              Telemetry data is stale.
-            </p>
-          ) : null}
         </div>
+
+        <LiveAnalysisCard
+          title="Live Node Health Analysis"
+          headline={
+            telemetryFreshness.isStale
+              ? "Waiting for fresh data"
+              : "Node health monitoring active"
+          }
+          subtext={
+            telemetryFreshness.isStale
+              ? "Node data is stale; display will update when new telemetry arrives."
+              : `Monitoring ${nodes.length} node${nodes.length !== 1 ? "s" : ""} · updated ${telemetryFreshness.dataAge} ago.`
+          }
+          isStale={telemetryFreshness.isStale}
+          metrics={[
+            {
+              label: "Online",
+              value: String(
+                nodes.filter((n) => n.status === "healthy").length,
+              ),
+            },
+            {
+              label: "Warning",
+              value: String(
+                nodes.filter((n) => n.status === "warning").length,
+              ),
+            },
+            {
+              label: "Critical",
+              value: String(
+                nodes.filter(
+                  (n) => n.status === "fault" || n.status === "critical",
+                ).length,
+              ),
+            },
+            { label: "Total Nodes", value: String(nodes.length) },
+          ]}
+        />
 
         {apiError && (
           <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-300">
