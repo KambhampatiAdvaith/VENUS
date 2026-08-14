@@ -134,6 +134,29 @@ def insert_telemetry(readings: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rows_with_written_at
 
 
+def build_telemetry_broadcast_payload(
+    scenario: str,
+    inserted_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "scenario": scenario,
+        "count": len(inserted_rows),
+        "edge_anomaly_count": sum(
+            1 for row in inserted_rows if row.get("edge_anomaly") is True
+        ),
+    }
+
+
+async def broadcast_inserted_telemetry(
+    scenario: str,
+    inserted_rows: list[dict[str, Any]],
+) -> None:
+    await manager.broadcast(
+        "telemetry",
+        build_telemetry_broadcast_payload(scenario, inserted_rows),
+    )
+
+
 async def telemetry_simulation_loop() -> None:
     interval_seconds = int(os.getenv("TELEMETRY_SIMULATION_INTERVAL", "15"))
 
@@ -153,14 +176,7 @@ async def telemetry_simulation_loop() -> None:
                 anomaly_count,
             )
 
-            await manager.broadcast(
-                "telemetry",
-                {
-                    "scenario": scenario,
-                    "count": len(inserted_rows),
-                    "edge_anomaly_count": anomaly_count,
-                },
-            )
+            await broadcast_inserted_telemetry(scenario, inserted_rows)
 
         except Exception:
             logger.exception("Telemetry simulator cycle failed.")
@@ -182,9 +198,10 @@ def start_telemetry_simulator() -> None:
 
 
 @router.post("/telemetry/simulate")
-def simulate_single_telemetry_cycle():
+async def simulate_single_telemetry_cycle():
     scenario, readings = generate_telemetry_cycle()
     inserted_rows = insert_telemetry(readings)
+    await broadcast_inserted_telemetry(scenario, inserted_rows)
 
     return {
         "status": "success",
@@ -195,9 +212,10 @@ def simulate_single_telemetry_cycle():
 
 
 @router.post("/telemetry/simulate/normal")
-def simulate_normal_telemetry():
+async def simulate_normal_telemetry():
     readings = build_normal_telemetry()
     inserted_rows = insert_telemetry(readings)
+    await broadcast_inserted_telemetry("normal", inserted_rows)
 
     return {
         "status": "success",
@@ -208,9 +226,10 @@ def simulate_normal_telemetry():
 
 
 @router.post("/telemetry/simulate/overload-b")
-def simulate_overload_b_telemetry():
+async def simulate_overload_b_telemetry():
     readings = build_overload_telemetry("B")
     inserted_rows = insert_telemetry(readings)
+    await broadcast_inserted_telemetry("overload_b", inserted_rows)
 
     return {
         "status": "success",
@@ -221,9 +240,10 @@ def simulate_overload_b_telemetry():
 
 
 @router.post("/telemetry/simulate/overload-c")
-def simulate_overload_c_telemetry():
+async def simulate_overload_c_telemetry():
     readings = build_overload_telemetry("C")
     inserted_rows = insert_telemetry(readings)
+    await broadcast_inserted_telemetry("overload_c", inserted_rows)
 
     return {
         "status": "success",
@@ -234,10 +254,11 @@ def simulate_overload_c_telemetry():
 
 
 @router.post("/telemetry/simulate/fault")
-def simulate_fault_telemetry():
+async def simulate_fault_telemetry():
     source_node = random.choice(["A", "B", "C"])
     readings = build_overload_telemetry(source_node)
     inserted_rows = insert_telemetry(readings)
+    await broadcast_inserted_telemetry("fault", inserted_rows)
 
     return {
         "status": "success",
