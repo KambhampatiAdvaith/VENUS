@@ -214,7 +214,9 @@ export default function Predictions() {
                         </button>
 
                         <p className="text-slate-400 text-sm">
-                            Last updated: {lastUpdated || "Loading..."}
+                            {lastUpdated
+                                ? `Live refresh active · synced at ${lastUpdated}`
+                                : "Live refresh active · awaiting first sync..."}
                         </p>
                     </div>
                 </div>

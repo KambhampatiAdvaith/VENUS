@@ -192,7 +192,9 @@ export default function LoadBalancingControls() {
                 </div>
 
                 <p className="mt-3 text-sm text-slate-400">
-                    Pending actions last refreshed at: {lastRefreshedAt || "Loading..."}
+                    {lastRefreshedAt
+                        ? `Approval queue synced at ${lastRefreshedAt}`
+                        : "Approval queue sync: pending..."}
                 </p>
 
                 {message ? (
