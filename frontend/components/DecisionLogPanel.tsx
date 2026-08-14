@@ -126,7 +126,9 @@ export default function DecisionLogPanel() {
             </div>
 
             <p className="mb-5 text-sm text-slate-400">
-                Last refreshed at: {lastRefreshedAt || "Loading..."}
+                {lastRefreshedAt
+                    ? `Audit log synced at ${lastRefreshedAt}`
+                    : "Audit log sync: pending..."}
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">

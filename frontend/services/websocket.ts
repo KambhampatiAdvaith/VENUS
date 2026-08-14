@@ -1,5 +1,47 @@
-const WS_URL =
-    process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000/ws/live";
+const LOCAL_WS_URL = "ws://localhost:8000/ws/live";
+let hasWarnedAboutMissingWebSocketConfig = false;
+
+
+function resolveWebSocketUrl(): string | null {
+    const configuredUrl = process.env.NEXT_PUBLIC_WS_URL?.trim();
+
+    if (configuredUrl) {
+        return configuredUrl;
+    }
+
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+    if (apiBaseUrl) {
+        try {
+            const parsedApiBaseUrl = new URL(apiBaseUrl);
+            const protocol =
+                parsedApiBaseUrl.protocol === "https:" ? "wss:" : "ws:";
+
+            return `${protocol}//${parsedApiBaseUrl.host}/ws/live`;
+        } catch {
+            return null;
+        }
+    }
+
+    if (typeof window !== "undefined") {
+        const isLocalHost =
+            window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1";
+
+        if (isLocalHost) {
+            return LOCAL_WS_URL;
+        }
+    }
+
+    if (!hasWarnedAboutMissingWebSocketConfig) {
+        console.warn(
+            "WebSocket URL is not configured. Set NEXT_PUBLIC_WS_URL or NEXT_PUBLIC_API_BASE_URL for deployed environments.",
+        );
+        hasWarnedAboutMissingWebSocketConfig = true;
+    }
+
+    return null;
+}
 
 export type LiveEvent = {
     event: "telemetry" | "prediction" | "fault" | "load_balancing" | string;
@@ -37,8 +79,14 @@ export function createWebSocketClient(
     function connect() {
         if (stopped) return;
 
+        const wsUrl = resolveWebSocketUrl();
+
+        if (!wsUrl) {
+            return;
+        }
+
         try {
-            socket = new WebSocket(WS_URL);
+            socket = new WebSocket(wsUrl);
         } catch {
             scheduleReconnect();
             return;

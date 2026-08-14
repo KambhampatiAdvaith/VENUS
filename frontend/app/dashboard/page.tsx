@@ -225,6 +225,42 @@ function getActionStatusColor(status: string): string {
 }
 
 
+function readSettledValue<T>(
+  result: PromiseSettledResult<T>,
+  label: string,
+  fallbackValue: T,
+  failedLabels: string[],
+  critical = false,
+): T {
+  if (result.status === "fulfilled") {
+    return result.value;
+  }
+
+  failedLabels.push(label);
+
+  if (critical) {
+    console.error(`Failed to fetch ${label}:`, result.reason);
+  } else {
+    console.warn(`Failed to fetch ${label}:`, result.reason);
+  }
+
+  return fallbackValue;
+}
+
+
+function formatLatencyMs(value: number | null): string {
+  if (value == null) {
+    return "N/A";
+  }
+
+  if (value === 0) {
+    return "<1 ms";
+  }
+
+  return `${value} ms`;
+}
+
+
 export default async function Dashboard() {
   let metrics = fallbackMetrics;
   let nodes = fallbackNodes;
@@ -234,41 +270,82 @@ export default async function Dashboard() {
   let latestLoadBalancingImpact: LoadBalancingImpact | null = null;
   let loadBalancingSummary = fallbackLoadBalancingSummary;
   let latencyMetrics = fallbackLatencyMetrics;
+  const criticalFailures: string[] = [];
+  const optionalFailures: string[] = [];
   let apiError = false;
 
-  try {
-    const [
-      metricsResponse,
-      nodesResponse,
-      telemetryResponse,
-      predictionMetricsResponse,
-      loadBalancingActionsResponse,
-      latestLoadBalancingImpactResponse,
-      loadBalancingSummaryResponse,
-      latencyMetricsResponse,
-    ] = await Promise.all([
-      api.getDashboardMetrics(),
-      api.getNodes(),
-      api.getTelemetry(25),
-      api.getPredictionMetrics(),
-      api.getLoadBalancingActions(8),
-      api.getLatestLoadBalancingImpact(),
-      api.getLoadBalancingSummary(),
-      api.getLatencyMetrics(),
-    ]);
+  const [
+    metricsResponse,
+    nodesResponse,
+    telemetryResponse,
+    predictionMetricsResponse,
+    loadBalancingActionsResponse,
+    latestLoadBalancingImpactResponse,
+    loadBalancingSummaryResponse,
+    latencyMetricsResponse,
+  ] = await Promise.allSettled([
+    api.getDashboardMetrics(),
+    api.getNodes(),
+    api.getTelemetry(25),
+    api.getPredictionMetrics(),
+    api.getLoadBalancingActions(8),
+    api.getLatestLoadBalancingImpact(),
+    api.getLoadBalancingSummary(),
+    api.getLatencyMetrics(),
+  ]);
 
-    metrics = metricsResponse;
-    nodes = nodesResponse;
-    telemetry = telemetryResponse;
-    predictionMetrics = predictionMetricsResponse;
-    loadBalancingActions = loadBalancingActionsResponse;
-    latestLoadBalancingImpact = latestLoadBalancingImpactResponse;
-    loadBalancingSummary = loadBalancingSummaryResponse;
-    latencyMetrics = latencyMetricsResponse;
-  } catch (error) {
-    console.error("Failed to fetch dashboard data:", error);
-    apiError = true;
-  }
+  metrics = readSettledValue(
+    metricsResponse,
+    "dashboard metrics",
+    fallbackMetrics,
+    criticalFailures,
+    true,
+  );
+  nodes = readSettledValue(
+    nodesResponse,
+    "node status",
+    fallbackNodes,
+    criticalFailures,
+    true,
+  );
+  telemetry = readSettledValue(
+    telemetryResponse,
+    "telemetry feed",
+    fallbackTelemetry,
+    criticalFailures,
+    true,
+  );
+  predictionMetrics = readSettledValue(
+    predictionMetricsResponse,
+    "prediction metrics",
+    fallbackPredictionMetrics,
+    optionalFailures,
+  );
+  loadBalancingActions = readSettledValue(
+    loadBalancingActionsResponse,
+    "load balancing history",
+    fallbackLoadBalancingActions,
+    optionalFailures,
+  );
+  latestLoadBalancingImpact = readSettledValue(
+    latestLoadBalancingImpactResponse,
+    "latest load balancing impact",
+    null,
+    optionalFailures,
+  );
+  loadBalancingSummary = readSettledValue(
+    loadBalancingSummaryResponse,
+    "load balancing summary",
+    fallbackLoadBalancingSummary,
+    optionalFailures,
+  );
+  latencyMetrics = readSettledValue(
+    latencyMetricsResponse,
+    "latency metrics",
+    fallbackLatencyMetrics,
+    optionalFailures,
+  );
+  apiError = criticalFailures.length > 0;
 
   const loadChartData = buildLoadChartData(telemetry);
   const telemetryFreshness = getTelemetryFreshness(
@@ -276,6 +353,17 @@ export default async function Dashboard() {
     new Date(),
     telemetry[0]?.database_written_at,
   );
+  const latencyValues = [
+    latencyMetrics.avg_latency_ms,
+    latencyMetrics.min_latency_ms,
+    latencyMetrics.max_latency_ms,
+    latencyMetrics.median_latency_ms,
+  ];
+  const hasLatencyValues = latencyValues.some((value) => value != null);
+  const isSimulatorModeLatency =
+    latencyMetrics.sample_count > 0 &&
+    latencyValues.every((value) => value === 0);
+  const hasLoadBalancingActions = loadBalancingSummary.total_actions > 0;
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
@@ -316,7 +404,7 @@ export default async function Dashboard() {
           isStale={telemetryFreshness.isStale}
           metrics={[
             { label: "Avg Load", value: `${metrics.avg_load}%` },
-            { label: "Grid Health", value: metrics.system_health },
+            { label: "Grid Health", value: formatHealthStatus(metrics.system_health) },
             {
               label: "Predicted Faults",
               value: String(predictionMetrics.predicted_faults),
@@ -329,77 +417,100 @@ export default async function Dashboard() {
           <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-300">
             <p className="font-semibold">Unable to load dashboard data</p>
             <p className="text-sm mt-1">
-              The backend could not be reached. Make sure the V.E.N.U.S backend is running, then refresh the page.
+              Core dashboard feeds are unavailable ({criticalFailures.join(", ")}). The page is showing fallback values until the backend recovers.
+            </p>
+          </div>
+        )}
+
+        {optionalFailures.length > 0 && (
+          <div className="mb-6 rounded-xl border border-yellow-500/40 bg-yellow-500/10 p-4 text-yellow-200">
+            <p className="font-semibold">Some supplementary insights are temporarily unavailable</p>
+            <p className="text-sm mt-1">
+              Optional sections could not be loaded ({optionalFailures.join(", ")}). Core dashboard monitoring is still live.
             </p>
           </div>
         )}
 
         {/* Latency Metrics */}
-        {latencyMetrics.sample_count > 0 && (
+        {latencyMetrics.sample_count > 0 && hasLatencyValues && (
           <section className="mb-8">
-            <h2 className="text-xl font-semibold mb-3 text-slate-300">
-              End-to-End Latency Metrics
-            </h2>
+            {isSimulatorModeLatency ? (
+              <div className="bg-slate-900 rounded-xl border border-cyan-500/30 p-6">
+                <p className="text-sm uppercase tracking-wide text-cyan-300">
+                  Simulator Mode Latency
+                </p>
+                <p className="mt-3 text-4xl font-bold text-cyan-100">
+                  &lt;1 ms
+                </p>
+                <p className="mt-3 text-sm text-slate-300">
+                  Telemetry is inserted directly by the simulator, so measured
+                  pipeline latency is below the dashboard&apos;s display
+                  resolution.
+                </p>
+                <p className="mt-2 text-xs text-slate-500">
+                  Based on {latencyMetrics.sample_count} recent telemetry
+                  sample{latencyMetrics.sample_count !== 1 ? "s" : ""}.
+                </p>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-xl font-semibold mb-3 text-slate-300">
+                  End-to-End Latency Metrics
+                </h2>
 
-            <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="bg-slate-800">
-                    <th className="p-3 text-left border border-slate-700 text-slate-300">
-                      Samples
-                    </th>
+                <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden overflow-x-auto">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-slate-800">
+                        <th className="p-3 text-left border border-slate-700 text-slate-300">
+                          Samples
+                        </th>
 
-                    <th className="p-3 text-left border border-slate-700 text-slate-300">
-                      Avg Latency
-                    </th>
+                        <th className="p-3 text-left border border-slate-700 text-slate-300">
+                          Avg Latency
+                        </th>
 
-                    <th className="p-3 text-left border border-slate-700 text-slate-300">
-                      Min Latency
-                    </th>
+                        <th className="p-3 text-left border border-slate-700 text-slate-300">
+                          Min Latency
+                        </th>
 
-                    <th className="p-3 text-left border border-slate-700 text-slate-300">
-                      Max Latency
-                    </th>
+                        <th className="p-3 text-left border border-slate-700 text-slate-300">
+                          Max Latency
+                        </th>
 
-                    <th className="p-3 text-left border border-slate-700 text-slate-300">
-                      Median Latency
-                    </th>
-                  </tr>
-                </thead>
+                        <th className="p-3 text-left border border-slate-700 text-slate-300">
+                          Median Latency
+                        </th>
+                      </tr>
+                    </thead>
 
-                <tbody>
-                  <tr>
-                    <td className="p-3 border border-slate-700">
-                      {latencyMetrics.sample_count}
-                    </td>
+                    <tbody>
+                      <tr>
+                        <td className="p-3 border border-slate-700">
+                          {latencyMetrics.sample_count}
+                        </td>
 
-                    <td className="p-3 border border-slate-700">
-                      {latencyMetrics.avg_latency_ms != null
-                        ? `${latencyMetrics.avg_latency_ms} ms`
-                        : "N/A"}
-                    </td>
+                        <td className="p-3 border border-slate-700">
+                          {formatLatencyMs(latencyMetrics.avg_latency_ms)}
+                        </td>
 
-                    <td className="p-3 border border-slate-700">
-                      {latencyMetrics.min_latency_ms != null
-                        ? `${latencyMetrics.min_latency_ms} ms`
-                        : "N/A"}
-                    </td>
+                        <td className="p-3 border border-slate-700">
+                          {formatLatencyMs(latencyMetrics.min_latency_ms)}
+                        </td>
 
-                    <td className="p-3 border border-slate-700">
-                      {latencyMetrics.max_latency_ms != null
-                        ? `${latencyMetrics.max_latency_ms} ms`
-                        : "N/A"}
-                    </td>
+                        <td className="p-3 border border-slate-700">
+                          {formatLatencyMs(latencyMetrics.max_latency_ms)}
+                        </td>
 
-                    <td className="p-3 border border-slate-700">
-                      {latencyMetrics.median_latency_ms != null
-                        ? `${latencyMetrics.median_latency_ms} ms`
-                        : "N/A"}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                        <td className="p-3 border border-slate-700">
+                          {formatLatencyMs(latencyMetrics.median_latency_ms)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </section>
         )}
 
@@ -558,12 +669,16 @@ export default async function Dashboard() {
                 Total Actions
               </h3>
 
-              <p className="text-4xl font-bold mt-4 text-emerald-400">
-                {loadBalancingSummary.total_actions}
+              <p className={`mt-4 font-bold text-emerald-400 ${hasLoadBalancingActions ? "text-4xl" : "text-2xl"}`}>
+                {hasLoadBalancingActions
+                  ? loadBalancingSummary.total_actions
+                  : "No actions yet"}
               </p>
 
               <p className="text-slate-500 text-sm mt-2">
-                Recent balancing decisions
+                {hasLoadBalancingActions
+                  ? "Recent balancing decisions"
+                  : "Load balancing history will appear here once recommendations run"}
               </p>
             </div>
 
@@ -572,12 +687,16 @@ export default async function Dashboard() {
                 Success Rate
               </h3>
 
-              <p className="text-4xl font-bold mt-4 text-green-400">
-                {loadBalancingSummary.success_rate}%
+              <p className={`mt-4 font-bold text-green-400 ${hasLoadBalancingActions ? "text-4xl" : "text-2xl"}`}>
+                {hasLoadBalancingActions
+                  ? `${loadBalancingSummary.success_rate}%`
+                  : "Awaiting decisions"}
               </p>
 
               <p className="text-slate-500 text-sm mt-2">
-                Effective closed-loop actions
+                {hasLoadBalancingActions
+                  ? "Effective closed-loop actions"
+                  : "Success metrics will update after the first executed action"}
               </p>
             </div>
 
@@ -586,12 +705,16 @@ export default async function Dashboard() {
                 Avg Load Reduction
               </h3>
 
-              <p className="text-4xl font-bold mt-4 text-cyan-400">
-                {loadBalancingSummary.average_load_reduction}%
+              <p className={`mt-4 font-bold text-cyan-400 ${hasLoadBalancingActions ? "text-4xl" : "text-2xl"}`}>
+                {hasLoadBalancingActions
+                  ? `${loadBalancingSummary.average_load_reduction}%`
+                  : "Pending"}
               </p>
 
               <p className="text-slate-500 text-sm mt-2">
-                Source node load decrease
+                {hasLoadBalancingActions
+                  ? "Source node load decrease"
+                  : "Average reduction appears after completed balancing actions"}
               </p>
             </div>
 
@@ -600,12 +723,16 @@ export default async function Dashboard() {
                 Avg Risk Reduction
               </h3>
 
-              <p className="text-4xl font-bold mt-4 text-purple-400">
-                {loadBalancingSummary.average_risk_reduction}
+              <p className={`mt-4 font-bold text-purple-400 ${hasLoadBalancingActions ? "text-4xl" : "text-2xl"}`}>
+                {hasLoadBalancingActions
+                  ? loadBalancingSummary.average_risk_reduction
+                  : "Awaiting impact"}
               </p>
 
               <p className="text-slate-500 text-sm mt-2">
-                Risk score improvement
+                {hasLoadBalancingActions
+                  ? "Risk score improvement"
+                  : "Impact metrics will appear after a recorded balancing result"}
               </p>
             </div>
           </div>

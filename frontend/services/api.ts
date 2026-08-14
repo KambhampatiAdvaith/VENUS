@@ -181,13 +181,22 @@ async function apiFetch<T>(
     endpoint: string,
     options?: RequestInit,
 ): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        cache: "no-store",
-        ...options,
-    });
+    const method = (options?.method ?? "GET").toUpperCase();
+    let response: Response;
+
+    try {
+        response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            cache: "no-store",
+            ...options,
+        });
+    } catch {
+        throw new Error(`API request failed: ${method} ${endpoint} (network error)`);
+    }
 
     if (!response.ok) {
-        throw new Error(`API request failed: ${endpoint}`);
+        throw new Error(
+            `API request failed: ${method} ${endpoint} (${response.status} ${response.statusText})`,
+        );
     }
 
     return response.json();
