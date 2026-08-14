@@ -5,6 +5,7 @@ import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import { api, PredictionRecord } from "../../services/api";
 import { getRefreshIntervalMs } from "../../services/settings";
+import { createWebSocketClient } from "../../services/websocket";
 
 
 function formatFaultName(fault: string): string {
@@ -139,6 +140,23 @@ export default function Predictions() {
     }, [loadPredictions]);
 
 
+    useEffect(() => {
+        const ws = createWebSocketClient(
+            (event) => {
+                if (event.event === "prediction" || event.event === "fault") {
+                    void loadPredictions();
+                }
+            },
+        );
+
+        ws.connect();
+
+        return () => {
+            ws.disconnect();
+        };
+    }, [loadPredictions]);
+
+
     const predictedFaults = predictions.filter(
         (prediction) =>
             prediction.predicted_fault !== "normal" || prediction.anomaly
@@ -209,6 +227,51 @@ export default function Predictions() {
                         </p>
                     </div>
                 )}
+
+                {!fetchError && !loading ? (
+                    <div className="mb-8 rounded-xl border border-cyan-500/40 bg-cyan-500/10 p-4 text-cyan-100">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <p className="text-sm uppercase tracking-wide text-cyan-300">
+                                    Live AI Analysis
+                                </p>
+                                <p className="text-xl font-bold">
+                                    {predictions.length === 0
+                                        ? "No predictions yet — run a prediction cycle"
+                                        : `Risk level: ${systemRiskLevel}`}
+                                </p>
+                                <p className="mt-1 text-sm text-cyan-200/80">
+                                    {predictions.length > 0
+                                        ? `${predictions.length} prediction${predictions.length !== 1 ? "s" : ""} analysed · auto-refreshes on new events.`
+                                        : "Click \u201cRefresh Now\u201d or wait for a scheduled prediction cycle."}
+                                </p>
+                            </div>
+
+                            {predictions.length > 0 ? (
+                                <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+                                    <div>
+                                        <p className="text-cyan-300">Predictions</p>
+                                        <p className="font-semibold">{predictions.length}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-cyan-300">Predicted Faults</p>
+                                        <p className="font-semibold">{predictedFaults.length}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-cyan-300">High Risk</p>
+                                        <p className="font-semibold">{highRiskCount}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-cyan-300">Avg Risk Score</p>
+                                        <p className="font-semibold">
+                                            {(averageRiskScore * 100).toFixed(1)}%
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+                ) : null}
 
                 {runError && (
                     <div className="mb-6 rounded-xl border border-yellow-500/40 bg-yellow-500/10 p-4 text-yellow-300">

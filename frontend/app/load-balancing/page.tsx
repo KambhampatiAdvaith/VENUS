@@ -2,6 +2,8 @@ import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import LoadChart, { LoadChartData } from "../../components/LoadChart";
 import AutoRefreshControls from "../../components/AutoRefreshControls";
+import LiveUpdateBanner from "../../components/LiveUpdateBanner";
+import LiveAnalysisCard from "../../components/LiveAnalysisCard";
 import LoadBalancingStatusSummary from "../../components/LoadBalancingStatusSummary";
 import { api, NodeStatus, TelemetryRecord } from "../../services/api";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
@@ -68,32 +70,47 @@ export default async function LoadBalancing() {
             </p>
           </div>
 
-          <AutoRefreshControls label="Refresh Load Balancing" />
-        </div>
-
-        <div
-          className={`mb-8 rounded-xl border p-4 ${
-            telemetryFreshness.isStale
-              ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-200"
-              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-          }`}
-        >
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <p className="font-semibold">
-              Last telemetry update: {telemetryFreshness.lastTelemetryUpdate}
-            </p>
-
-            <p>
-              Data age: {telemetryFreshness.dataAge}
-            </p>
+          <div className="flex flex-col items-start md:items-end gap-2">
+            <AutoRefreshControls label="Refresh Load Balancing" />
+            <LiveUpdateBanner listenTo={["telemetry", "load_balancing"]} />
           </div>
-
-          {telemetryFreshness.isStale ? (
-            <p className="mt-2 text-sm">
-              Telemetry data is stale.
-            </p>
-          ) : null}
         </div>
+
+        <LiveAnalysisCard
+          title="Live Load Analysis"
+          headline={
+            telemetryFreshness.isStale
+              ? "Waiting for fresh data"
+              : "Load distribution active"
+          }
+          subtext={
+            telemetryFreshness.isStale
+              ? "Load data is stale; analysis will update when new telemetry arrives."
+              : `Monitoring ${nodes.length} node${nodes.length !== 1 ? "s" : ""} · updated ${telemetryFreshness.dataAge} ago.`
+          }
+          isStale={telemetryFreshness.isStale}
+          metrics={[
+            { label: "Active Nodes", value: String(nodes.length) },
+            {
+              label: "Latest Load",
+              value:
+                telemetry[0] != null ? `${telemetry[0].load}%` : "N/A",
+            },
+            {
+              label: "Peak Load",
+              value:
+                telemetry.length > 0
+                  ? `${Math.max(...telemetry.map((t) => t.load)).toFixed(1)}%`
+                  : "N/A",
+            },
+            {
+              label: "Healthy Nodes",
+              value: String(
+                nodes.filter((n) => n.status === "healthy").length,
+              ),
+            },
+          ]}
+        />
 
         {apiError && (
           <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-300">

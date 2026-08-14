@@ -6,6 +6,7 @@ import LoadBalancingControls from "../../components/LoadBalancingControls";
 import DecisionLogPanel from "../../components/DecisionLogPanel";
 import AutoRefreshControls from "../../components/AutoRefreshControls";
 import LiveUpdateBanner from "../../components/LiveUpdateBanner";
+import LiveAnalysisCard from "../../components/LiveAnalysisCard";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
 import {
   formatDisplayTime,
@@ -300,29 +301,29 @@ export default async function Dashboard() {
           </div>
         </div>
 
-        <div
-          className={`mb-8 rounded-xl border p-4 ${
+        <LiveAnalysisCard
+          title="Live Grid Analysis"
+          headline={
             telemetryFreshness.isStale
-              ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-200"
-              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-          }`}
-        >
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <p className="font-semibold">
-              Last telemetry update: {telemetryFreshness.lastTelemetryUpdate}
-            </p>
-
-            <p>
-              Data age: {telemetryFreshness.dataAge}
-            </p>
-          </div>
-
-          {telemetryFreshness.isStale ? (
-            <p className="mt-2 text-sm">
-              Telemetry data is stale.
-            </p>
-          ) : null}
-        </div>
+              ? "Waiting for fresh telemetry"
+              : "Real-time monitoring active"
+          }
+          subtext={
+            telemetryFreshness.isStale
+              ? "Latest telemetry is stale; live analysis will update when new events arrive."
+              : `Fresh telemetry received ${telemetryFreshness.dataAge} ago.`
+          }
+          isStale={telemetryFreshness.isStale}
+          metrics={[
+            { label: "Avg Load", value: `${metrics.avg_load}%` },
+            { label: "Grid Health", value: metrics.system_health },
+            {
+              label: "Predicted Faults",
+              value: String(predictionMetrics.predicted_faults),
+            },
+            { label: "AI Risk", value: `${predictionMetrics.risk_score}%` },
+          ]}
+        />
 
         {apiError && (
           <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-300">
