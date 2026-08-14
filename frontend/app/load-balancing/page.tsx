@@ -7,7 +7,10 @@ import LiveAnalysisCard from "../../components/LiveAnalysisCard";
 import LoadBalancingStatusSummary from "../../components/LoadBalancingStatusSummary";
 import { api, NodeStatus, TelemetryRecord } from "../../services/api";
 import { getTelemetryFreshness } from "../../services/telemetryFreshness";
-import { formatDisplayTime } from "../../services/timestamps";
+import {
+  formatDisplayTime,
+  formatDisplayTimestamp,
+} from "../../services/timestamps";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +25,7 @@ function buildLoadChartData(telemetry: TelemetryRecord[]): LoadChartData[] {
     .reverse()
     .map((item) => ({
       time: formatDisplayTime(item),
+      fullTimestamp: formatDisplayTimestamp(item),
       load: item.load,
     }));
 }

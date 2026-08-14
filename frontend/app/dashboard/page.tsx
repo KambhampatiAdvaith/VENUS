@@ -147,6 +147,7 @@ function buildLoadChartData(telemetry: TelemetryRecord[]): LoadChartData[] {
     .reverse()
     .map((item) => ({
       time: formatDisplayTime(item),
+      fullTimestamp: formatDisplayTimestamp(item),
       load: item.load,
     }));
 }
