@@ -3,7 +3,11 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.api.database import get_db
-from backend.api.models import Fault, Telemetry
+from backend.api.fault_window import (
+    count_active_faults,
+    get_system_health_for_active_faults,
+)
+from backend.api.models import Telemetry
 from backend.api.schemas import DashboardMetricsResponse
 
 
@@ -21,17 +25,12 @@ def get_dashboard_metrics(db: Session = Depends(get_db)):
         .count()
     )
 
-    active_faults = db.query(Fault).count()
+    active_faults = count_active_faults(db)
 
     avg_load_result = db.query(func.avg(Telemetry.load)).scalar()
     avg_load = round(float(avg_load_result), 2) if avg_load_result else 0.0
 
-    if active_faults == 0:
-        system_health = "healthy"
-    elif active_faults <= 5:
-        system_health = "warning"
-    else:
-        system_health = "critical"
+    system_health = get_system_health_for_active_faults(active_faults)
 
     return {
         "total_nodes": total_nodes,

@@ -119,6 +119,15 @@ function getMostCommonFault(faults: FaultRecord[]): string {
 }
 
 
+function getMostCommonFaultLabel(activeFaults: number): string {
+  if (activeFaults > 0) {
+    return "Most Common Fault";
+  }
+
+  return "Most Common Historical Fault";
+}
+
+
 function getLatestTelemetryTimestamp(telemetry: TelemetryRecord[]): string | undefined {
   return telemetry
     .map((item) => item.timestamp)
@@ -159,6 +168,7 @@ export default async function Analytics() {
   const avgVoltage = getAverage(telemetry.map((item) => item.voltage));
   const efficiency = getEfficiency(nodes);
   const mostCommonFault = getMostCommonFault(faults);
+  const mostCommonFaultLabel = getMostCommonFaultLabel(metrics.active_faults);
   const telemetryFreshness = getTelemetryFreshness(
     getLatestTelemetryTimestamp(telemetry)
   );
@@ -214,7 +224,7 @@ export default async function Analytics() {
             { label: "Peak Load", value: `${peakLoad}%` },
             { label: "Avg Voltage", value: `${avgVoltage} V` },
             { label: "Efficiency", value: `${efficiency}%` },
-            { label: "Top Fault", value: mostCommonFault },
+            { label: metrics.active_faults > 0 ? "Top Fault" : "Historical Top Fault", value: mostCommonFault },
           ]}
         />
 
@@ -320,11 +330,15 @@ export default async function Analytics() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-slate-800 rounded-lg p-4">
               <h3 className="text-slate-400">
-                Total Fault Records
+                Historical Fault Records
               </h3>
 
               <p className="text-2xl font-bold mt-2">
                 {faults.length}
+              </p>
+
+              <p className="text-slate-500 text-xs mt-2">
+                Latest stored fault history (up to 100 records)
               </p>
             </div>
 
@@ -336,11 +350,15 @@ export default async function Analytics() {
               <p className="text-2xl font-bold mt-2">
                 {metrics.active_faults}
               </p>
+
+              <p className="text-slate-500 text-xs mt-2">
+                Faults inside the active backend window
+              </p>
             </div>
 
             <div className="bg-slate-800 rounded-lg p-4">
               <h3 className="text-slate-400">
-                Most Common Fault
+                {mostCommonFaultLabel}
               </h3>
 
               <p className="text-2xl font-bold mt-2">

@@ -1,29 +1,42 @@
 # V.E.N.U.S.
+
 **Virtual Edge-Node Unified System — Real-Time Smart-Grid Monitoring and Load Management**
 
+V.E.N.U.S. is a full-stack smart-grid monitoring and decision-support prototype for real-time telemetry ingestion, simulated edge anomaly detection, cloud-side AI fault prediction, and operator-supervised load-balancing recommendations.
+
+The system models a distributed edge-cloud utility workflow: simulated substations publish telemetry, the backend stores and analyzes operating data, and the frontend gives operators a live view of grid health, predictions, alerts, recommendations, and audit history.
+
+> **Scope note:** V.E.N.U.S. is designed as a deployed smart-grid monitoring prototype and evidence platform. It demonstrates realistic data flow, operator workflows, anomaly detection, and decision support, but it is not a production SCADA/control system and does not actuate real electrical infrastructure.
+
 ---
 
-V.E.N.U.S. is a near-complete distributed edge-cloud platform for smart-grid monitoring, fault detection, AI-driven risk prediction, and autonomous load balancing. Simulated substations produce live telemetry that flows through MQTT and Kafka into a FastAPI/PostgreSQL backend, where an XGBoost model predicts fault risk and a load-balancing engine recommends or executes corrective actions. Operators interact with a Next.js dashboard that streams live updates via WebSocket.
+## Live Demo
+
+```text
+https://venusnotplanet.vercel.app/
+```
 
 ---
 
-## Capabilities
+## Key Capabilities
 
-- **Real-time telemetry ingestion** — voltage, current, temperature, load, and frequency from multiple simulated substations
-- **Edge anomaly detection** — Isolation Forest runs at each substation before data is forwarded, enriching telemetry with anomaly scores
-- **Fault detection and alerts** — backend raises alerts when telemetry crosses thresholds; visible on the Alerts page
-- **AI risk predictions** — XGBoost model scores each telemetry reading for fault probability
-- **Load balancing workflow** — engine detects overloaded nodes, generates recommendations, supports operator approval, and logs every decision for audit
-- **Live dashboard** — WebSocket-driven updates for telemetry, alerts, node status, analytics, predictions, and balancing history
-- **Closed-loop outcome tracking** — balancing outcomes are validated and stored for post-hoc review
+- **Real-time telemetry ingestion** — voltage, current, temperature, load, and frequency from simulated substations A, B, and C.
+- **Simulated edge anomaly detection** — Isolation Forest enriches telemetry with edge anomaly scores before cloud persistence.
+- **Cloud-side AI fault prediction** — XGBoost classifies recent telemetry into normal or likely fault conditions.
+- **Live operator dashboard** — WebSocket-triggered updates refresh telemetry, node health, analytics, predictions, alerts, and balancing data.
+- **Node and grid health monitoring** — current health uses latest telemetry and a configurable recent active-fault window rather than treating all historical faults as active.
+- **Load-balancing decision support** — engine recommends simulated load shifts and supports operator approval/rejection.
+- **Decision audit trail** — records balancing triggers, decisions, operator workflow, status, and observed impact.
+- **Benchmark evidence** — latency, throughput, AI evaluation, edge/cloud comparison, and resource-profile scripts support repeatable validation.
+- **Deployment support** — production Docker Compose files for backend/infrastructure and Vercel-compatible frontend configuration.
 
 ---
 
 ## Architecture
 
-```
+```text
 Substation simulators (Python)
-  │  MQTT publish (venus/telemetry/#, venus/faults/#)
+  │  MQTT publish: venus/telemetry/#, venus/faults/#
   ▼
 Mosquitto MQTT broker
   │
@@ -34,8 +47,9 @@ MQTT-to-Kafka bridge
 FastAPI backend
   ├── Kafka telemetry consumer → PostgreSQL
   ├── Kafka fault consumer → PostgreSQL / alerts
+  ├── Simulated edge anomaly detection metadata
   ├── XGBoost prediction engine
-  ├── Load balancing engine (recommend / approve / audit)
+  ├── Load-balancing recommendation / approval / audit APIs
   └── WebSocket push to frontend
   ▼
 Next.js dashboard (operator UI)
@@ -43,45 +57,47 @@ Next.js dashboard (operator UI)
 
 | Layer | Technology |
 |---|---|
-| Substation simulation | Python, Isolation Forest |
+| Substation simulation | Python |
 | Messaging | Mosquitto MQTT, Apache Kafka, Zookeeper |
-| Backend | FastAPI, PostgreSQL |
-| ML | Isolation Forest (edge), XGBoost (cloud) |
-| Frontend | Next.js, Tailwind CSS |
-| Infrastructure | Docker, Docker Compose |
+| Backend | FastAPI, SQLAlchemy, PostgreSQL |
+| ML / analytics | Isolation Forest, XGBoost, pandas, scikit-learn |
+| Frontend | Next.js App Router, React, Tailwind CSS, Recharts |
+| Deployment | Docker, Docker Compose, Vercel-compatible frontend |
 
 ---
 
-## Project structure
+## Project Structure
 
-```
+```text
 VENUS/
 ├── backend/
 │   ├── backend/
-│   │   ├── api/            FastAPI app, routes, schemas
-│   │   ├── kafka/          Kafka consumers (telemetry, faults)
+│   │   ├── api/            FastAPI app, routes, schemas, WebSocket manager
+│   │   ├── ai/             XGBoost prediction and Isolation Forest model training
+│   │   ├── edge/           simulated edge anomaly detector
+│   │   ├── kafka/          telemetry/fault consumers and producer utilities
 │   │   ├── mqtt/           MQTT-to-Kafka bridge
-│   │   ├── models/         XGBoost prediction model
-│   │   └── load_balancing/ Balancing engine and audit logic
-│   ├── simulator/          Substation A/B/C simulators (MQTT publishers)
-│   ├── benchmarks/         Latency, throughput, and AI evaluation scripts
-│   ├── tests/              Backend unit and integration tests
-│   └── docker-compose.yml  Infrastructure services
+│   │   ├── optimization/   load-balancing decision engine
+│   │   └── database/       schema initialization
+│   ├── simulator/          substation telemetry/fault publishers
+│   ├── benchmarks/         latency, throughput, AI, edge/cloud, resource reports
+│   ├── tests/              backend unit/integration tests
+│   └── docker-compose*.yml infrastructure and deployment profiles
 ├── frontend/
-│   ├── app/                Next.js pages (dashboard, telemetry, alerts, …)
-│   ├── components/         Shared UI components
-│   └── services/           API client, settings, WebSocket helpers
-└── docs/                   Validation, benchmarking, and testing guides
+│   ├── app/                dashboard, telemetry, alerts, analytics, nodes, predictions, settings
+│   ├── components/         charts, cards, navigation, live update components
+│   └── services/           API client, WebSocket client, settings, timestamp helpers
+└── docs/                   deployment, validation, benchmarking, reliability, evidence guides
 ```
 
 ---
 
-## Setup and run
+## Setup and Run Locally
 
 ### Prerequisites
 
 - Docker and Docker Compose
-- Python 3.11+ with a virtual environment (`backend/venv`)
+- Python 3.11+
 - Node.js 18+
 
 ### 1. Start infrastructure
@@ -91,37 +107,49 @@ cd backend
 docker-compose up -d
 ```
 
-This starts Zookeeper, Kafka (with topic init), Mosquitto MQTT, and PostgreSQL. Wait 30–60 seconds, then verify:
+Verify Kafka topics:
 
 ```bash
-docker ps
-# Expected containers: venus-zookeeper, venus-kafka, venus-kafka-init, venus-mosquitto, venus-postgres
-
 docker exec venus-kafka kafka-topics --bootstrap-server venus-kafka:29092 --list
-# Expected topics: venus.telemetry  venus.faults  venus.alerts  venus.load-balancing
 ```
 
-### 2. Start the backend
+Expected topics include:
+
+```text
+venus.telemetry
+venus.faults
+venus.alerts
+venus.load-balancing
+```
+
+### 2. Start backend
 
 ```bash
 cd backend
+python -m venv venv
 source venv/bin/activate          # macOS/Linux
-# venv\Scripts\Activate.ps1       # Windows PowerShell
+# venv\Scripts\Activate.ps1      # Windows PowerShell
+
+pip install -r requirements.txt
+python -m backend.database.init_db
 
 export ENABLE_KAFKA_TELEMETRY_CONSUMER=true
 export ENABLE_KAFKA_FAULT_CONSUMER=true
 export KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 export MQTT_HOST=localhost
 export MQTT_PORT=1883
+export ACTIVE_FAULT_WINDOW_MINUTES=10
 
 python -m uvicorn backend.api.main:app --reload
 ```
 
-Backend starts at `http://127.0.0.1:8000`. Swagger docs: `http://127.0.0.1:8000/docs`.
+Backend docs:
 
-### 3. Start the MQTT-to-Kafka bridge
+```text
+http://127.0.0.1:8000/docs
+```
 
-Open a new terminal:
+### 3. Start MQTT-to-Kafka bridge
 
 ```bash
 cd backend
@@ -136,20 +164,20 @@ python -m backend.mqtt.mqtt_to_kafka_bridge
 
 ### 4. Start substation simulators
 
-Open three terminals (one per substation):
+Open one terminal per substation:
 
 ```bash
-cd backend && source venv/bin/activate
-export MQTT_HOST=localhost && export MQTT_PORT=1883
+cd backend
+source venv/bin/activate
+export MQTT_HOST=localhost
+export MQTT_PORT=1883
 
-python -m simulator.substation_a   # Terminal A
-python -m simulator.substation_b   # Terminal B
-python -m simulator.substation_c   # Terminal C
+python -m simulator.substation_a
+python -m simulator.substation_b
+python -m simulator.substation_c
 ```
 
-Each simulator publishes telemetry and fault events to the MQTT broker. Data flows: MQTT → Kafka → backend → PostgreSQL → dashboard.
-
-### 5. Start the frontend
+### 5. Start frontend
 
 ```bash
 cd frontend
@@ -157,32 +185,63 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000/dashboard`.
+Open:
+
+```text
+http://localhost:3000/dashboard
+```
 
 ---
 
-## Operational guidelines
+## Environment Variables
+
+### Backend
+
+| Variable | Purpose | Example |
+|---|---|---|
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql://venus:venus@localhost:5432/venus` |
+| `FRONTEND_URL` | Allowed frontend origin for CORS | `https://venusnotplanet.vercel.app` |
+| `ENABLE_STARTUP_TELEMETRY_SIMULATOR` | Starts backend demo telemetry loop | `true` |
+| `TELEMETRY_SIMULATION_INTERVAL` | Backend simulator interval in seconds | `5` |
+| `ENABLE_AI_PREDICTION_LOOP` | Runs periodic prediction cycles | `true` |
+| `ENABLE_KAFKA_TELEMETRY_CONSUMER` | Starts Kafka telemetry consumer | `true` |
+| `ENABLE_KAFKA_FAULT_CONSUMER` | Starts Kafka fault consumer | `true` |
+| `ACTIVE_FAULT_WINDOW_MINUTES` | Recent window used for active node/grid health | `10` |
+| `KAFKA_BOOTSTRAP_SERVERS` | Kafka broker list | `localhost:9092` |
+| `MQTT_HOST` / `MQTT_PORT` | MQTT broker location | `localhost` / `1883` |
+
+### Frontend
+
+| Variable | Purpose | Example |
+|---|---|---|
+| `NEXT_PUBLIC_API_BASE_URL` | Backend API base URL | `https://your-backend.onrender.com` |
+| `NEXT_PUBLIC_WS_URL` | Live WebSocket URL | `wss://your-backend.onrender.com/ws/live` |
+
+If `NEXT_PUBLIC_WS_URL` is omitted, the frontend can derive the WebSocket URL from `NEXT_PUBLIC_API_BASE_URL`.
+
+---
+
+## Operational Workflows
 
 ### Generate normal telemetry
 
-Run all three substation simulators (step 4 above). After 10–20 seconds:
-
 ```bash
+curl -X POST http://127.0.0.1:8000/telemetry/simulate/normal
 curl http://127.0.0.1:8000/telemetry?limit=10
-curl http://127.0.0.1:8000/telemetry/latency
+curl http://127.0.0.1:8000/nodes
 ```
 
-### Inject a fault
+### Inject a fault scenario
 
-The simulators periodically inject fault conditions automatically. To observe fault detection:
+```bash
+curl -X POST http://127.0.0.1:8000/telemetry/simulate/fault
+curl http://127.0.0.1:8000/faults?limit=10
+curl http://127.0.0.1:8000/dashboard/metrics
+```
 
-1. Watch the **Alerts** page (`/alerts`) in the dashboard.
-2. Check the backend logs for fault consumer activity.
-3. Query the faults endpoint: `curl http://127.0.0.1:8000/faults?limit=10`
+`/faults` preserves historical records. Current node/grid health uses recent faults inside `ACTIVE_FAULT_WINDOW_MINUTES` plus latest telemetry thresholds.
 
-### Run AI predictions
-
-With the backend running and telemetry flowing:
+### Run cloud-side predictions
 
 ```bash
 curl -X POST http://127.0.0.1:8000/predictions/run
@@ -190,99 +249,120 @@ curl http://127.0.0.1:8000/predictions?limit=10
 curl http://127.0.0.1:8000/predictions/metrics
 ```
 
-The **AI Predictions** page (`/predictions`) shows risk scores in real time.
-
-### Trigger load balancing
-
-1. Open the **Load Balancing** page (`/load-balancing`).
-2. Use **Create Recommendation** to generate a pending recommendation when an overload condition exists.
-3. Approve or reject pending recommendations using the operator controls.
-4. Review recent actions in the balancing history and audit log.
-
-Or via API:
+### Create and review load-balancing recommendations
 
 ```bash
-# Supervised recommendation workflow
 curl -X POST http://127.0.0.1:8000/load-balancing/recommend
 curl http://127.0.0.1:8000/load-balancing/pending?limit=10
-curl -X POST http://127.0.0.1:8000/load-balancing/approve/1   # replace 1 with a pending action id
-curl -X POST http://127.0.0.1:8000/load-balancing/reject/1    # replace 1 with a pending action id
-
-# Manual execution and history/audit inspection
-curl -X POST "http://127.0.0.1:8000/load-balancing/execute?execution_mode=manual"
-curl http://127.0.0.1:8000/load-balancing?limit=10
+curl -X POST http://127.0.0.1:8000/load-balancing/approve/1
+curl -X POST http://127.0.0.1:8000/load-balancing/reject/1
 curl http://127.0.0.1:8000/load-balancing/decision-log?limit=10
-curl http://127.0.0.1:8000/load-balancing/impact/latest
 ```
 
-### Inspect latency and throughput
+---
 
-```bash
-cd backend
-source venv/bin/activate
-python -m benchmarks.run_week7_benchmarks --base-url http://127.0.0.1:8000
-```
+## Performance and Validation Results
 
-Reports are written to `benchmark_results/`. See [Benchmarking Guide](docs/benchmarks.md) for options.
+The following benchmark values were captured from the project benchmark suite and are included as representative evidence for the completed prototype.
 
-### Resource utilization profile
+### API Latency
 
-```bash
-python -m benchmarks.run_week7_benchmarks --base-url http://127.0.0.1:8000 --resource-profile
-```
+| Endpoint | Requests | OK | Errors | Avg Latency |
+|---|---:|---:|---:|---:|
+| Dashboard Metrics | 10 | 10 | 0 | 30.15 ms |
+| Telemetry List | 10 | 10 | 0 | 42.60 ms |
+| Latest Telemetry | 10 | 10 | 0 | 29.45 ms |
+| Telemetry Latency | 10 | 10 | 0 | 18.17 ms |
+| Nodes | 10 | 10 | 0 | 19.96 ms |
+| Load Balancing | 10 | 10 | 0 | 21.31 ms |
 
-### Recommended demo flow
+### Telemetry Throughput
 
-1. Start Docker services → wait for Kafka topics
-2. Start backend with Kafka consumers enabled
-3. Start MQTT-to-Kafka bridge
-4. Start substation simulators (A, B, C)
-5. Open dashboard → confirm live data age < 30 s
-6. Check Alerts page for detected faults
-7. Run predictions → verify XGBoost risk scores on the Predictions page
-8. Open Load Balancing page → create and approve a recommendation
-9. Check balancing history and decision log for the audit record
-10. Adjust Settings (refresh interval, alert threshold) to tune the operator view
+| Metric | Value |
+|---|---:|
+| Total simulate requests | 51 |
+| Successes | 51 |
+| Failures | 0 |
+| Observed rate | 5.07 req/s |
+| Avg simulate latency | 90.29 ms |
+| Rows inserted | 153 |
+| Rows per second | 15.2 |
+
+### Latency Measurements
+
+| Metric | Value |
+|---|---:|
+| Average Latency | 18.17 ms |
+| Minimum Latency | 5.07 ms |
+| Maximum Latency | 35.85 ms |
+| Median Latency | 17.44 ms |
+
+### Edge vs Cloud Comparison
+
+| Metric | Value |
+|---|---:|
+| Edge substations covered | 3 |
+| Cloud substations covered | 3 |
+| Paired substations | 3 |
+| Operational agreement rate | 100.0% |
+
+### Processing Mode Comparison
+
+| Processing Mode | Latency |
+|---|---:|
+| Cloud-only | 17.84 ms |
+| Edge-assisted | 29.62 ms |
+
+> Edge/cloud values are prototype benchmark evidence over simulated telemetry. Operational agreement is not supervised real-world accuracy.
 
 ---
 
 ## Deployment
 
-See the **[Deployment Guide](docs/deployment.md)** for instructions on hosting the backend on a Docker VPS and the frontend on Vercel.
+See [`docs/deployment.md`](docs/deployment.md) for the full deployment guide covering backend infrastructure and Vercel frontend setup.
+
+Minimum hosted frontend configuration:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=https://<backend-host>
+NEXT_PUBLIC_WS_URL=wss://<backend-host>/ws/live
+```
+
+Minimum hosted backend configuration:
+
+```text
+FRONTEND_URL=https://venusnotplanet.vercel.app
+ENABLE_STARTUP_TELEMETRY_SIMULATOR=true
+TELEMETRY_SIMULATION_INTERVAL=5
+ENABLE_AI_PREDICTION_LOOP=true
+ACTIVE_FAULT_WINDOW_MINUTES=10
+```
 
 ---
 
-## Validation and testing
+## Validation and Evidence Guides
 
 | Guide | Purpose |
 |---|---|
-| [End-to-End Validation Runbook](docs/week8_validation.md) | Full system walk-through and acceptance criteria |
-| [Functional Testing Checklist](docs/week8_functional_testing.md) | Per-page and per-flow pass/fail checklist |
-| [Evidence Collection Checklist](docs/week8_evidence_checklist.md) | Screenshots, logs, and metrics to capture |
-| [Benchmarking Guide](docs/benchmarks.md) | Latency, throughput, and AI evaluation scripts |
-| [Performance Benchmarking](docs/week8_benchmarking.md) | Benchmark run instructions and result interpretation |
-| [Resource Utilization Profile](docs/week8_resource_profile.md) | CPU, memory, and I/O profiling |
-| [Simulator Realism](docs/simulator_realism.md) | Fault injection patterns and realism settings |
-| [Error Handling](docs/week8_error_handling.md) | UI error states and backend resilience |
-| [Reliability](docs/reliability.md) | Retry logic, circuit breakers, and logging |
-| [AI Evaluation Metrics](docs/ai_evaluation.md) | XGBoost precision, recall, and F1 results |
-| [Edge vs Cloud Comparison](docs/edge_cloud_comparison.md) | Latency and accuracy trade-offs |
+| [`docs/week8_validation.md`](docs/week8_validation.md) | End-to-end validation runbook |
+| [`docs/week8_functional_testing.md`](docs/week8_functional_testing.md) | Per-page functional testing checklist |
+| [`docs/week8_evidence_checklist.md`](docs/week8_evidence_checklist.md) | Screenshot, log, and metric evidence checklist |
+| [`docs/benchmarks.md`](docs/benchmarks.md) | Latency, throughput, AI, and edge/cloud benchmark instructions |
+| [`docs/week8_benchmarking.md`](docs/week8_benchmarking.md) | Benchmark interpretation and success criteria |
+| [`docs/simulator_realism.md`](docs/simulator_realism.md) | Simulator realism design notes |
+| [`docs/reliability.md`](docs/reliability.md) | Retry, logging, and tolerated failure behavior |
 
 ---
 
-## Feature status
+## Real-World Scope and Limitations
 
-| Feature | Status |
-|---|---|
-| Substation simulation (A, B, C) | ✅ Complete |
-| Edge anomaly detection (Isolation Forest) | ✅ Complete |
-| MQTT + Kafka pipeline | ✅ Complete |
-| XGBoost fault prediction | ✅ Complete |
-| Autonomous load balancing | ✅ Complete |
-| Operator approval and audit trail | ✅ Complete |
-| Live dashboard with WebSocket updates | ✅ Complete |
-| Docker infrastructure | ✅ Complete |
-| Latency and throughput benchmarks | ✅ Complete |
-| AI evaluation metrics | ✅ Complete |
+V.E.N.U.S. is intended to demonstrate a realistic monitoring and decision-support workflow. To avoid overclaiming:
 
----
+- The substations are simulated, not physical devices.
+- Edge anomaly detection is simulated edge-side processing, not deployed hardware inference.
+- AI predictions are trained and evaluated over simulated/rule-labeled telemetry, not utility outage ground truth.
+- Load balancing stores simulated recommendations and outcomes; it does not actuate real switching equipment.
+- The dashboard has operator controls, but production authentication/authorization and SCADA-grade safety controls are outside the current scope.
+- The system is best described as a smart-grid monitoring and decision-support prototype, not a production grid control platform.
+
+These limitations are intentional for a safe, repeatable prototype while preserving a realistic edge-cloud architecture and operator workflow.

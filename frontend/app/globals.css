@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #020617;
+  --foreground: #e2e8f0;
   --font-geist-sans: Arial, Helvetica, sans-serif;
   --font-geist-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
@@ -14,15 +14,62 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html[data-theme="light"] {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+html[data-theme="dark"] {
+  --background: #020617;
+  --foreground: #e2e8f0;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+html[data-theme="light"] .bg-slate-950 {
+  background-color: #f8fafc !important;
+}
+
+html[data-theme="light"] .bg-slate-900 {
+  background-color: #ffffff !important;
+}
+
+html[data-theme="light"] .bg-slate-800 {
+  background-color: #e2e8f0 !important;
+}
+
+html[data-theme="light"] .bg-slate-700 {
+  background-color: #cbd5e1 !important;
+}
+
+html[data-theme="light"] .border-slate-800 {
+  border-color: #cbd5e1 !important;
+}
+
+html[data-theme="light"] .border-slate-700 {
+  border-color: #dbe4ee !important;
+}
+
+html[data-theme="light"] .text-white {
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .text-slate-500 {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .text-slate-400 {
+  color: #475569 !important;
+}
+
+html[data-theme="light"] .text-slate-300 {
+  color: #334155 !important;
+}
+
+html[data-theme="light"] .hover\:bg-slate-800:hover {
+  background-color: #e2e8f0 !important;
 }
