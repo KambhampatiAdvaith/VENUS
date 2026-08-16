@@ -65,8 +65,13 @@ FRONTEND_URL=https://<your-vercel-app>.vercel.app
 # Kafka consumer toggles (defaults used by docker-compose.prod.yml)
 ENABLE_KAFKA_TELEMETRY_CONSUMER=true
 ENABLE_KAFKA_FAULT_CONSUMER=false
+ACTIVE_FAULT_WINDOW_MINUTES=10
 EOF
 ```
+
+`ACTIVE_FAULT_WINDOW_MINUTES` controls how long a fault stays "active" for `/nodes`
+and `/dashboard/metrics`. Historical fault rows remain stored and visible through
+`/faults`, but node/grid health only reflects faults inside this recent window.
 
 ### 3. Start the production stack
 

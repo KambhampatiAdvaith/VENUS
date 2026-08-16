@@ -360,10 +360,7 @@ export default async function Dashboard() {
     latencyMetrics.max_latency_ms,
     latencyMetrics.median_latency_ms,
   ];
-  const hasLatencyValues = latencyValues.some((value) => value != null);
-  const isSimulatorModeLatency =
-    latencyMetrics.sample_count > 0 &&
-    latencyValues.every((value) => value === 0);
+  const hasLatencyValues = latencyValues.some((value) => (value ?? 0) > 0);
   const hasLoadBalancingActions = loadBalancingSummary.total_actions > 0;
 
   return (
@@ -432,86 +429,63 @@ export default async function Dashboard() {
           </div>
         )}
 
-        {/* Latency Metrics */}
         {latencyMetrics.sample_count > 0 && hasLatencyValues && (
           <section className="mb-8">
-            {isSimulatorModeLatency ? (
-              <div className="bg-slate-900 rounded-xl border border-cyan-500/30 p-6">
-                <p className="text-sm uppercase tracking-wide text-cyan-300">
-                  Simulator Mode Latency
-                </p>
-                <p className="mt-3 text-4xl font-bold text-cyan-100">
-                  &lt;1 ms
-                </p>
-                <p className="mt-3 text-sm text-slate-300">
-                  Telemetry is inserted directly by the simulator, so measured
-                  pipeline latency is below the dashboard&apos;s display
-                  resolution.
-                </p>
-                <p className="mt-2 text-xs text-slate-500">
-                  Based on {latencyMetrics.sample_count} recent telemetry
-                  sample{latencyMetrics.sample_count !== 1 ? "s" : ""}.
-                </p>
-              </div>
-            ) : (
-              <>
-                <h2 className="text-xl font-semibold mb-3 text-slate-300">
-                  End-to-End Latency Metrics
-                </h2>
+            <h2 className="text-xl font-semibold mb-3 text-slate-300">
+              End-to-End Latency Metrics
+            </h2>
 
-                <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden overflow-x-auto">
-                  <table className="w-full border-collapse text-sm">
-                    <thead>
-                      <tr className="bg-slate-800">
-                        <th className="p-3 text-left border border-slate-700 text-slate-300">
-                          Samples
-                        </th>
+            <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-slate-800">
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Samples
+                    </th>
 
-                        <th className="p-3 text-left border border-slate-700 text-slate-300">
-                          Avg Latency
-                        </th>
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Avg Latency
+                    </th>
 
-                        <th className="p-3 text-left border border-slate-700 text-slate-300">
-                          Min Latency
-                        </th>
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Min Latency
+                    </th>
 
-                        <th className="p-3 text-left border border-slate-700 text-slate-300">
-                          Max Latency
-                        </th>
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Max Latency
+                    </th>
 
-                        <th className="p-3 text-left border border-slate-700 text-slate-300">
-                          Median Latency
-                        </th>
-                      </tr>
-                    </thead>
+                    <th className="p-3 text-left border border-slate-700 text-slate-300">
+                      Median Latency
+                    </th>
+                  </tr>
+                </thead>
 
-                    <tbody>
-                      <tr>
-                        <td className="p-3 border border-slate-700">
-                          {latencyMetrics.sample_count}
-                        </td>
+                <tbody>
+                  <tr>
+                    <td className="p-3 border border-slate-700">
+                      {latencyMetrics.sample_count}
+                    </td>
 
-                        <td className="p-3 border border-slate-700">
-                          {formatLatencyMs(latencyMetrics.avg_latency_ms)}
-                        </td>
+                    <td className="p-3 border border-slate-700">
+                      {formatLatencyMs(latencyMetrics.avg_latency_ms)}
+                    </td>
 
-                        <td className="p-3 border border-slate-700">
-                          {formatLatencyMs(latencyMetrics.min_latency_ms)}
-                        </td>
+                    <td className="p-3 border border-slate-700">
+                      {formatLatencyMs(latencyMetrics.min_latency_ms)}
+                    </td>
 
-                        <td className="p-3 border border-slate-700">
-                          {formatLatencyMs(latencyMetrics.max_latency_ms)}
-                        </td>
+                    <td className="p-3 border border-slate-700">
+                      {formatLatencyMs(latencyMetrics.max_latency_ms)}
+                    </td>
 
-                        <td className="p-3 border border-slate-700">
-                          {formatLatencyMs(latencyMetrics.median_latency_ms)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
+                    <td className="p-3 border border-slate-700">
+                      {formatLatencyMs(latencyMetrics.median_latency_ms)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </section>
         )}
 
@@ -551,7 +525,7 @@ export default async function Dashboard() {
               </p>
 
               <p className="text-slate-500 text-sm mt-2">
-                Current system condition
+                Based on recent active faults only
               </p>
             </div>
           </div>

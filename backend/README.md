@@ -11,6 +11,7 @@ Common optional variables:
 - `ENABLE_AI_PREDICTION_LOOP=false` to keep the prediction loop manual by default
 - `ENABLE_KAFKA_TELEMETRY_CONSUMER=true` starts the real Kafka telemetry consumer inside FastAPI and broadcasts telemetry WebSocket events after database writes.
 - `ENABLE_KAFKA_FAULT_CONSUMER=true` starts the real Kafka fault consumer inside FastAPI and broadcasts fault WebSocket events after database writes.
+- `ACTIVE_FAULT_WINDOW_MINUTES=10` limits node/grid health to faults seen in the most recent window while keeping all historical fault records stored for `/faults` and history views.
 - `TELEMETRY_SIMULATION_INTERVAL=15`
 - `KAFKA_BOOTSTRAP_SERVERS=localhost:9092`
 

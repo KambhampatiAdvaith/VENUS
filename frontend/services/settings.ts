@@ -3,10 +3,13 @@
 export const SETTINGS_STORAGE_KEY = "venus_settings";
 
 
+export type VenusTheme = "dark" | "light";
+
+
 export type VenusSettings = {
     refreshInterval: string;
     alertThreshold: number;
-    theme: string;
+    theme: VenusTheme;
     notificationsEnabled: boolean;
 };
 
@@ -17,6 +20,11 @@ export const defaultSettings: VenusSettings = {
     theme: "dark",
     notificationsEnabled: true,
 };
+
+
+export function normalizeTheme(theme: unknown): VenusTheme {
+    return theme === "light" ? "light" : "dark";
+}
 
 
 export function readSettings(): VenusSettings {
@@ -31,13 +39,50 @@ export function readSettings(): VenusSettings {
     }
 
     try {
+        const parsedSettings = JSON.parse(storedSettings);
+
         return {
             ...defaultSettings,
-            ...JSON.parse(storedSettings),
+            ...parsedSettings,
+            theme: normalizeTheme(parsedSettings.theme),
         };
     } catch {
         return defaultSettings;
     }
+}
+
+
+export function applyTheme(theme: unknown): VenusTheme {
+    const normalizedTheme = normalizeTheme(theme);
+
+    if (typeof document === "undefined") {
+        return normalizedTheme;
+    }
+
+    document.documentElement.dataset.theme = normalizedTheme;
+    document.documentElement.classList.toggle("dark", normalizedTheme === "dark");
+    document.documentElement.classList.toggle("light", normalizedTheme === "light");
+
+    return normalizedTheme;
+}
+
+
+export function writeSettings(settings: VenusSettings): VenusSettings {
+    const normalizedSettings: VenusSettings = {
+        ...defaultSettings,
+        ...settings,
+        theme: normalizeTheme(settings.theme),
+    };
+
+    if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+            SETTINGS_STORAGE_KEY,
+            JSON.stringify(normalizedSettings),
+        );
+    }
+
+    applyTheme(normalizedSettings.theme);
+    return normalizedSettings;
 }
 
 

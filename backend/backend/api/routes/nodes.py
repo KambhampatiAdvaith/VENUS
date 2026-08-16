@@ -3,6 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from backend.api.database import get_db
+from backend.api.fault_window import get_active_fault_counts_by_substation
 from backend.api.schemas import NodeStatusResponse
 
 
@@ -38,6 +39,8 @@ def get_node_status(
 
 @router.get("", response_model=list[NodeStatusResponse])
 def get_nodes(db: Session = Depends(get_db)):
+    active_fault_counts = get_active_fault_counts_by_substation(db)
+
     query = """
         WITH latest_by_ingest AS (
             SELECT DISTINCT ON (substation)
@@ -82,11 +85,6 @@ def get_nodes(db: Session = Depends(get_db)):
                 FROM latest_by_ingest
                 WHERE latest_by_ingest.substation = latest_by_payload.substation
             )
-        ),
-        fault_counts AS (
-            SELECT substation, COUNT(*) AS fault_count
-            FROM faults
-            GROUP BY substation
         )
         SELECT
             latest_telemetry.substation,
@@ -95,11 +93,8 @@ def get_nodes(db: Session = Depends(get_db)):
             latest_telemetry.load,
             latest_telemetry.frequency,
             latest_telemetry.timestamp,
-            latest_telemetry.database_written_at,
-            COALESCE(fault_counts.fault_count, 0) AS fault_count
+            latest_telemetry.database_written_at
         FROM latest_telemetry
-        LEFT JOIN fault_counts
-          ON fault_counts.substation = latest_telemetry.substation
         ORDER BY latest_telemetry.substation
     """
 
@@ -116,7 +111,10 @@ def get_nodes(db: Session = Depends(get_db)):
                     voltage=telemetry["voltage"],
                     frequency=telemetry["frequency"],
                     load=telemetry["load"],
-                    fault_count=telemetry["fault_count"],
+                    fault_count=active_fault_counts.get(
+                        telemetry["substation"],
+                        0,
+                    ),
                 ),
                 "load": telemetry["load"],
                 "voltage": telemetry["voltage"],
