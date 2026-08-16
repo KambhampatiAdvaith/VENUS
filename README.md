@@ -1,6 +1,6 @@
 # V.E.N.U.S.
 
-**Virtual Edge-Node Unified System — Real-Time Smart-Grid Monitoring and Load Management**
+**Virtual Edge-Node Unified System - Real-Time Smart-Grid Monitoring and Load Management**
 
 V.E.N.U.S. is a full-stack smart-grid monitoring and decision-support prototype for real-time telemetry ingestion, simulated edge anomaly detection, cloud-side AI fault prediction, and operator-supervised load-balancing recommendations.
 
@@ -20,15 +20,15 @@ https://venusnotplanet.vercel.app/
 
 ## Key Capabilities
 
-- **Real-time telemetry ingestion** — voltage, current, temperature, load, and frequency from simulated substations A, B, and C.
-- **Simulated edge anomaly detection** — Isolation Forest enriches telemetry with edge anomaly scores before cloud persistence.
-- **Cloud-side AI fault prediction** — XGBoost classifies recent telemetry into normal or likely fault conditions.
-- **Live operator dashboard** — WebSocket-triggered updates refresh telemetry, node health, analytics, predictions, alerts, and balancing data.
-- **Node and grid health monitoring** — current health uses latest telemetry and a configurable recent active-fault window rather than treating all historical faults as active.
-- **Load-balancing decision support** — engine recommends simulated load shifts and supports operator approval/rejection.
-- **Decision audit trail** — records balancing triggers, decisions, operator workflow, status, and observed impact.
-- **Benchmark evidence** — latency, throughput, AI evaluation, edge/cloud comparison, and resource-profile scripts support repeatable validation.
-- **Deployment support** — production Docker Compose files for backend/infrastructure and Vercel-compatible frontend configuration.
+- **Real-time telemetry ingestion** - voltage, current, temperature, load, and frequency from simulated substations A, B, and C.
+- **Simulated edge anomaly detection** - Isolation Forest enriches telemetry with edge anomaly scores before cloud persistence.
+- **Cloud-side AI fault prediction** - XGBoost classifies recent telemetry into normal or likely fault conditions.
+- **Live operator dashboard** - WebSocket-triggered updates refresh telemetry, node health, analytics, predictions, alerts, and balancing data.
+- **Node and grid health monitoring** - current health uses latest telemetry and a configurable recent active-fault window rather than treating all historical faults as active.
+- **Load-balancing decision support** - engine recommends simulated load shifts and supports operator approval/rejection.
+- **Decision audit trail** - records balancing triggers, decisions, operator workflow, status, and observed impact.
+- **Benchmark evidence** - latency, throughput, AI evaluation, edge/cloud comparison, and resource-profile scripts support repeatable validation.
+- **Deployment support** - production Docker Compose files for backend/infrastructure and Vercel-compatible frontend configuration.
 
 ---
 
@@ -36,22 +36,22 @@ https://venusnotplanet.vercel.app/
 
 ```text
 Substation simulators (Python)
-  │  MQTT publish: venus/telemetry/#, venus/faults/#
-  ▼
+  |  MQTT publish: venus/telemetry/#, venus/faults/#
+  v
 Mosquitto MQTT broker
-  │
-  ▼
+  |
+  v
 MQTT-to-Kafka bridge
-  │  Kafka topics: venus.telemetry, venus.faults, venus.alerts, venus.load-balancing
-  ▼
+  |  Kafka topics: venus.telemetry, venus.faults, venus.alerts, venus.load-balancing
+  v
 FastAPI backend
-  ├── Kafka telemetry consumer → PostgreSQL
-  ├── Kafka fault consumer → PostgreSQL / alerts
-  ├── Simulated edge anomaly detection metadata
-  ├── XGBoost prediction engine
-  ├── Load-balancing recommendation / approval / audit APIs
-  └── WebSocket push to frontend
-  ▼
+  |-- Kafka telemetry consumer -> PostgreSQL
+  |-- Kafka fault consumer -> PostgreSQL / alerts
+  |-- Simulated edge anomaly detection metadata
+  |-- XGBoost prediction engine
+  |-- Load-balancing recommendation / approval / audit APIs
+  `-- WebSocket push to frontend
+  v
 Next.js dashboard (operator UI)
 ```
 
@@ -70,24 +70,24 @@ Next.js dashboard (operator UI)
 
 ```text
 VENUS/
-├── backend/
-│   ├── backend/
-│   │   ├── api/            FastAPI app, routes, schemas, WebSocket manager
-│   │   ├── ai/             XGBoost prediction and Isolation Forest model training
-│   │   ├── edge/           simulated edge anomaly detector
-│   │   ├── kafka/          telemetry/fault consumers and producer utilities
-│   │   ├── mqtt/           MQTT-to-Kafka bridge
-│   │   ├── optimization/   load-balancing decision engine
-│   │   └── database/       schema initialization
-│   ├── simulator/          substation telemetry/fault publishers
-│   ├── benchmarks/         latency, throughput, AI, edge/cloud, resource reports
-│   ├── tests/              backend unit/integration tests
-│   └── docker-compose*.yml infrastructure and deployment profiles
-├── frontend/
-│   ├── app/                dashboard, telemetry, alerts, analytics, nodes, predictions, settings
-│   ├── components/         charts, cards, navigation, live update components
-│   └── services/           API client, WebSocket client, settings, timestamp helpers
-└── docs/                   deployment, validation, benchmarking, reliability, evidence guides
+|-- backend/
+|   |-- backend/
+|   |   |-- api/            FastAPI app, routes, schemas, WebSocket manager
+|   |   |-- ai/             XGBoost prediction and Isolation Forest model training
+|   |   |-- edge/           simulated edge anomaly detector
+|   |   |-- kafka/          telemetry/fault consumers and producer utilities
+|   |   |-- mqtt/           MQTT-to-Kafka bridge
+|   |   |-- optimization/   load-balancing decision engine
+|   |   `-- database/       schema initialization
+|   |-- simulator/          substation telemetry/fault publishers
+|   |-- benchmarks/         latency, throughput, AI, edge/cloud, resource reports
+|   |-- tests/              backend unit/integration tests
+|   `-- docker-compose*.yml infrastructure and deployment profiles
+|-- frontend/
+|   |-- app/                dashboard, telemetry, alerts, analytics, nodes, predictions, settings
+|   |-- components/         charts, cards, navigation, live update components
+|   `-- services/           API client, WebSocket client, settings, timestamp helpers
+`-- docs/                   deployment, validation, benchmarking, reliability, evidence guides
 ```
 
 ---

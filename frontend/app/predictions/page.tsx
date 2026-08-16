@@ -3,9 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
-import { api, PredictionRecord } from "../../services/api";
+import { api, PredictionMetrics, PredictionRecord } from "../../services/api";
 import { getRefreshIntervalMs } from "../../services/settings";
 import { createWebSocketClient } from "../../services/websocket";
+
+
+const fallbackPredictionMetrics: PredictionMetrics = {
+    predicted_faults: 0,
+    risk_score: 0,
+    system_risk_level: "low",
+};
 
 
 function formatFaultName(fault: string): string {
@@ -27,6 +34,15 @@ function formatTimestamp(timestamp: string): string {
     }
 
     return new Date(timestamp).toLocaleString();
+}
+
+
+function formatRiskLevel(level: string): string {
+    if (!level) {
+        return "Unknown";
+    }
+
+    return level.charAt(0).toUpperCase() + level.slice(1);
 }
 
 
@@ -65,11 +81,13 @@ function getRiskLevel(prediction: PredictionRecord): string {
 
 
 function getRiskColor(riskLevel: string): string {
-    if (riskLevel === "High") {
+    const normalizedRiskLevel = riskLevel.toLowerCase();
+
+    if (normalizedRiskLevel === "high") {
         return "text-red-400";
     }
 
-    if (riskLevel === "Medium") {
+    if (normalizedRiskLevel === "medium") {
         return "text-yellow-400";
     }
 
@@ -79,6 +97,9 @@ function getRiskColor(riskLevel: string): string {
 
 export default function Predictions() {
     const [predictions, setPredictions] = useState<PredictionRecord[]>([]);
+    const [predictionMetrics, setPredictionMetrics] = useState<PredictionMetrics>(
+        fallbackPredictionMetrics,
+    );
     const [loading, setLoading] = useState(true);
     const [running, setRunning] = useState(false);
     const [lastUpdated, setLastUpdated] = useState("");
@@ -88,8 +109,13 @@ export default function Predictions() {
 
     const loadPredictions = useCallback(async () => {
         try {
-            const predictionRecords = await api.getPredictions(50);
+            const [predictionRecords, metrics] = await Promise.all([
+                api.getPredictions(50),
+                api.getPredictionMetrics(),
+            ]);
+
             setPredictions(predictionRecords);
+            setPredictionMetrics(metrics);
             setFetchError(false);
             setLastUpdated(
                 new Date().toLocaleTimeString("en-GB", {
@@ -157,34 +183,6 @@ export default function Predictions() {
     }, [loadPredictions]);
 
 
-    const predictedFaults = predictions.filter(
-        (prediction) =>
-            prediction.predicted_fault !== "normal" || prediction.anomaly
-    );
-
-    const averageRiskScore =
-        predictions.length > 0
-            ? predictions.reduce(
-                (sum, prediction) => sum + prediction.probability,
-                0
-            ) / predictions.length
-            : 0;
-
-    const highRiskCount = predictions.filter(
-        (prediction) =>
-            prediction.anomaly ||
-            (prediction.predicted_fault !== "normal" &&
-                prediction.probability >= 0.8)
-    ).length;
-
-    const systemRiskLevel =
-        highRiskCount > 0
-            ? "High"
-            : predictedFaults.length > 0
-                ? "Medium"
-                : "Low";
-
-
     return (
         <div className="flex min-h-screen bg-slate-950 text-white">
             <Sidebar />
@@ -239,34 +237,36 @@ export default function Predictions() {
                                 </p>
                                 <p className="text-xl font-bold">
                                     {predictions.length === 0
-                                        ? "No predictions yet — run a prediction cycle"
-                                        : `Risk level: ${systemRiskLevel}`}
+                                        ? "No predictions yet. Run a prediction cycle"
+                                        : `Risk level: ${formatRiskLevel(predictionMetrics.system_risk_level)}`}
                                 </p>
                                 <p className="mt-1 text-sm text-cyan-200/80">
                                     {predictions.length > 0
-                                        ? `${predictions.length} prediction${predictions.length !== 1 ? "s" : ""} analysed · auto-refreshes on new events.`
-                                        : "Click \u201cRefresh Now\u201d or wait for a scheduled prediction cycle."}
+                                        ? "Summary uses the latest prediction per substation; table keeps recent history."
+                                        : "Click Refresh Now or wait for a scheduled prediction cycle."}
                                 </p>
                             </div>
 
                             {predictions.length > 0 ? (
                                 <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                                     <div>
-                                        <p className="text-cyan-300">Predictions</p>
+                                        <p className="text-cyan-300">Prediction Records</p>
                                         <p className="font-semibold">{predictions.length}</p>
                                     </div>
                                     <div>
-                                        <p className="text-cyan-300">Predicted Faults</p>
-                                        <p className="font-semibold">{predictedFaults.length}</p>
+                                        <p className="text-cyan-300">Current Faults</p>
+                                        <p className="font-semibold">{predictionMetrics.predicted_faults}</p>
                                     </div>
                                     <div>
-                                        <p className="text-cyan-300">High Risk</p>
-                                        <p className="font-semibold">{highRiskCount}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-cyan-300">Avg Risk Score</p>
+                                        <p className="text-cyan-300">System Risk</p>
                                         <p className="font-semibold">
-                                            {(averageRiskScore * 100).toFixed(1)}%
+                                            {formatRiskLevel(predictionMetrics.system_risk_level)}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-cyan-300">Avg Confidence</p>
+                                        <p className="font-semibold">
+                                            {predictionMetrics.risk_score.toFixed(1)}%
                                         </p>
                                     </div>
                                 </div>
@@ -287,11 +287,15 @@ export default function Predictions() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
                         <h3 className="text-slate-400">
-                            Predicted Faults
+                            Current Predicted Faults
                         </h3>
 
                         <p className="text-3xl font-bold mt-2">
-                            {predictedFaults.length}
+                            {predictionMetrics.predicted_faults}
+                        </p>
+
+                        <p className="text-slate-500 text-sm mt-2">
+                            Latest prediction per substation
                         </p>
                     </div>
 
@@ -301,7 +305,11 @@ export default function Predictions() {
                         </h3>
 
                         <p className="text-3xl font-bold mt-2">
-                            {(averageRiskScore * 100).toFixed(2)}%
+                            {predictionMetrics.risk_score.toFixed(2)}%
+                        </p>
+
+                        <p className="text-slate-500 text-sm mt-2">
+                            Current summary confidence
                         </p>
                     </div>
 
@@ -310,8 +318,12 @@ export default function Predictions() {
                             System Risk Level
                         </h3>
 
-                        <p className={`text-3xl font-bold mt-2 ${getRiskColor(systemRiskLevel)}`}>
-                            {systemRiskLevel}
+                        <p className={`text-3xl font-bold mt-2 ${getRiskColor(predictionMetrics.system_risk_level)}`}>
+                            {formatRiskLevel(predictionMetrics.system_risk_level)}
+                        </p>
+
+                        <p className="text-slate-500 text-sm mt-2">
+                            Based on latest prediction per substation
                         </p>
                     </div>
                 </div>
@@ -323,7 +335,7 @@ export default function Predictions() {
                         </h2>
 
                         <p className="text-slate-400 mt-1">
-                            Predictions generated from telemetry using Isolation Forest and XGBoost
+                            Recent prediction history generated from telemetry using Isolation Forest and XGBoost
                         </p>
                     </div>
 
@@ -381,7 +393,7 @@ export default function Predictions() {
                                             Run a prediction cycle to generate results, or ensure telemetry data is available first:
                                         </p>
                                         <p className="text-sm mt-1 font-mono text-slate-500">
-                                            POST /telemetry/simulate/normal → then click &quot;Refresh Now&quot;
+                                            POST /telemetry/simulate/normal, then click &quot;Refresh Now&quot;
                                         </p>
                                     </td>
                                 </tr>

@@ -4,11 +4,9 @@ import { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import {
-  applyTheme,
   defaultSettings,
   readSettings,
   VenusSettings,
-  VenusTheme,
   writeSettings,
 } from "../../services/settings";
 
@@ -75,7 +73,7 @@ export default function Settings() {
 
     setSavedMessage(
       clampedThreshold
-        ? "Settings saved. Alert threshold was clamped to stay within 1–100%."
+        ? "Settings saved. Alert threshold was clamped to stay within 1-100%."
         : "Settings saved successfully."
     );
   }
@@ -107,9 +105,6 @@ export default function Settings() {
     REFRESH_INTERVAL_LABELS[settings.refreshInterval] ??
     `${settings.refreshInterval}s`;
 
-  const themeSummary =
-    settings.theme === "light" ? "Light mode" : "Dark mode";
-
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
@@ -123,7 +118,7 @@ export default function Settings() {
         </h1>
 
         <p className="text-slate-400 mb-6">
-          Operator preferences for appearance, live dashboard behaviour, and load-alert visibility.
+          Operator preferences for live dashboard behaviour and load-alert visibility.
         </p>
 
         <div className="mb-6 rounded-2xl border border-blue-500/40 bg-blue-500/10 p-5 text-blue-200 shadow-lg shadow-blue-950/20">
@@ -135,19 +130,7 @@ export default function Settings() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-slate-900 rounded-2xl p-5 border border-slate-800">
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-1">
-              Appearance
-            </p>
-            <p className="text-2xl font-bold text-white">
-              {themeSummary}
-            </p>
-            <p className="text-slate-500 text-xs mt-1">
-              Default remains dark until you choose light mode
-            </p>
-          </div>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <div className="bg-slate-900 rounded-2xl p-5 border border-slate-800">
             <p className="text-xs uppercase tracking-widest text-slate-500 mb-1">
               Refresh Interval
@@ -175,79 +158,6 @@ export default function Settings() {
 
         <section className="mb-6">
           <h2 className="text-lg font-semibold text-slate-200 mb-3">
-            Appearance
-          </h2>
-
-          <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 space-y-4">
-            <div>
-              <p className="text-slate-300 font-medium">
-                Theme
-              </p>
-              <p className="text-slate-500 text-sm mt-1">
-                Choose how the V.E.N.U.S dashboard is rendered in this browser. The preference is applied immediately and persists after refresh.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {([
-                {
-                  theme: "dark",
-                  title: "Dark mode",
-                  description: "Default V.E.N.U.S control-center theme for low-light monitoring rooms.",
-                },
-                {
-                  theme: "light",
-                  title: "Light mode",
-                  description: "Higher-contrast daytime theme for demos, screenshots, and bright environments.",
-                },
-              ] satisfies Array<{
-                theme: VenusTheme;
-                title: string;
-                description: string;
-              }>).map((option) => {
-                const selected = settings.theme === option.theme;
-
-                return (
-                  <button
-                    key={option.theme}
-                    type="button"
-                    onClick={() => {
-                      updateSetting("theme", option.theme);
-                      applyTheme(option.theme);
-                    }}
-                    className={`rounded-xl border p-5 text-left transition ${
-                      selected
-                        ? "border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-950/20"
-                        : "border-slate-700 bg-slate-800 hover:border-slate-500"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-white">
-                          {option.title}
-                        </p>
-                        <p className="text-sm text-slate-400 mt-2">
-                          {option.description}
-                        </p>
-                      </div>
-
-                      <span
-                        className={`inline-flex h-4 w-4 rounded-full border ${
-                          selected
-                            ? "border-blue-400 bg-blue-400"
-                            : "border-slate-500 bg-transparent"
-                        }`}
-                      />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        <section className="mb-6">
-          <h2 className="text-lg font-semibold text-slate-200 mb-3">
             Live Dashboard Behaviour
           </h2>
 
@@ -270,7 +180,7 @@ export default function Settings() {
             </select>
 
             <p className="text-slate-500 text-sm">
-              Pages with auto-refresh (dashboard, telemetry, nodes) re-fetch backend data on this interval. Changes take effect after navigating to or reloading an auto-refresh page.
+              Pages with auto-refresh, including dashboard, telemetry, and nodes, re-fetch backend data on this interval. Changes take effect after navigating to or reloading an auto-refresh page.
             </p>
           </div>
         </section>
@@ -282,7 +192,7 @@ export default function Settings() {
 
           <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 space-y-2">
             <label className="block text-slate-300 font-medium">
-              Alert Threshold (1–100%)
+              Alert Threshold (1-100%)
             </label>
 
             <input
@@ -305,7 +215,7 @@ export default function Settings() {
             )}
 
             <p className="text-slate-500 text-sm">
-              Load-balancing cards use this threshold to mark nodes as overloaded when the backend does not supply its own threshold value. Recommended range: 70–90%.
+              Load-balancing cards use this threshold to mark nodes as overloaded when the backend does not supply its own threshold value. Recommended range: 70-90%.
             </p>
           </div>
         </section>
@@ -317,13 +227,10 @@ export default function Settings() {
 
           <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 text-slate-400 text-sm space-y-3">
             <p>
-              <span className="text-slate-300 font-medium">Theme</span> — dark mode stays the default to preserve the current production look, while light mode provides a safer first-pass alternative for bright environments without changing backend behaviour.
+              <span className="text-slate-300 font-medium">Refresh interval</span>: use a short interval, such as 5-10 seconds, when monitoring live telemetry flowing through the MQTT to Kafka to backend pipeline.
             </p>
             <p>
-              <span className="text-slate-300 font-medium">Refresh interval</span> — use a short interval (5–10 s) when monitoring live telemetry flowing through the MQTT → Kafka → backend pipeline. Increase the interval to reduce polling load during idle observation.
-            </p>
-            <p>
-              <span className="text-slate-300 font-medium">Alert threshold</span> — set to 70–80% to see realistic overload indicators when the substation simulators are running. The load-balancing page highlights nodes whose reported load exceeds this value, making it easy to spot and respond to overload events.
+              <span className="text-slate-300 font-medium">Alert threshold</span>: set to 70-80% to see realistic overload indicators when the substation simulators are running. The load-balancing engine keeps its own backend safety thresholds.
             </p>
           </div>
         </section>

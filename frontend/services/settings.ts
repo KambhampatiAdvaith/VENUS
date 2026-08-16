@@ -3,13 +3,9 @@
 export const SETTINGS_STORAGE_KEY = "venus_settings";
 
 
-export type VenusTheme = "dark" | "light";
-
-
 export type VenusSettings = {
     refreshInterval: string;
     alertThreshold: number;
-    theme: VenusTheme;
     notificationsEnabled: boolean;
 };
 
@@ -17,14 +13,8 @@ export type VenusSettings = {
 export const defaultSettings: VenusSettings = {
     refreshInterval: "10",
     alertThreshold: 80,
-    theme: "dark",
     notificationsEnabled: true,
 };
-
-
-export function normalizeTheme(theme: unknown): VenusTheme {
-    return theme === "light" ? "light" : "dark";
-}
 
 
 export function readSettings(): VenusSettings {
@@ -42,9 +32,10 @@ export function readSettings(): VenusSettings {
         const parsedSettings = JSON.parse(storedSettings);
 
         return {
-            ...defaultSettings,
-            ...parsedSettings,
-            theme: normalizeTheme(parsedSettings.theme),
+            refreshInterval: parsedSettings.refreshInterval ?? defaultSettings.refreshInterval,
+            alertThreshold: parsedSettings.alertThreshold ?? defaultSettings.alertThreshold,
+            notificationsEnabled:
+                parsedSettings.notificationsEnabled ?? defaultSettings.notificationsEnabled,
         };
     } catch {
         return defaultSettings;
@@ -52,26 +43,11 @@ export function readSettings(): VenusSettings {
 }
 
 
-export function applyTheme(theme: unknown): VenusTheme {
-    const normalizedTheme = normalizeTheme(theme);
-
-    if (typeof document === "undefined") {
-        return normalizedTheme;
-    }
-
-    document.documentElement.dataset.theme = normalizedTheme;
-    document.documentElement.classList.toggle("dark", normalizedTheme === "dark");
-    document.documentElement.classList.toggle("light", normalizedTheme === "light");
-
-    return normalizedTheme;
-}
-
-
 export function writeSettings(settings: VenusSettings): VenusSettings {
     const normalizedSettings: VenusSettings = {
-        ...defaultSettings,
-        ...settings,
-        theme: normalizeTheme(settings.theme),
+        refreshInterval: settings.refreshInterval,
+        alertThreshold: settings.alertThreshold,
+        notificationsEnabled: settings.notificationsEnabled,
     };
 
     if (typeof window !== "undefined") {
@@ -81,7 +57,6 @@ export function writeSettings(settings: VenusSettings): VenusSettings {
         );
     }
 
-    applyTheme(normalizedSettings.theme);
     return normalizedSettings;
 }
 

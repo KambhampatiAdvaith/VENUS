@@ -73,7 +73,7 @@ npm run build
 | `/predictions` | Cloud-side AI prediction records and risk score |
 | `/alerts` | Fault/alert history |
 | `/load-balancing` | Load distribution and recommendation workflow |
-| `/settings` | Refresh interval, alert threshold, and appearance controls |
+| `/settings` | Refresh interval and alert threshold controls |
 
 ---
 
@@ -82,7 +82,7 @@ npm run build
 The frontend treats backend data as the source of truth. WebSocket events do not create telemetry directly; they trigger page refreshes so server-rendered pages refetch current backend data.
 
 ```text
-Backend inserts/updates data → WebSocket event → frontend refresh → latest API data displayed
+Backend inserts/updates data -> WebSocket event -> frontend refresh -> latest API data displayed
 ```
 
 Chart timestamps come from telemetry records, not from the browser clock or WebSocket receive time.
