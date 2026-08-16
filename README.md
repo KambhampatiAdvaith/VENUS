@@ -1,6 +1,6 @@
 # V.E.N.U.S.
 
-**Virtual Edge-Node Unified System - Real-Time Smart-Grid Monitoring and Load Management**
+**Volt Edge Network Utility System - Real-Time Smart-Grid Monitoring and Load Management**
 
 V.E.N.U.S. is a full-stack smart-grid monitoring and decision-support prototype for real-time telemetry ingestion, simulated edge anomaly detection, cloud-side AI fault prediction, and operator-supervised load-balancing recommendations.
 
