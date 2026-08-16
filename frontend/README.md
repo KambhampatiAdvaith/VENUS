@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# V.E.N.U.S. Frontend
 
-## Getting Started
+The V.E.N.U.S. frontend is a Next.js operator dashboard for the Volt Edge Network Utility System. It visualizes live telemetry, node health, analytics, AI predictions, alerts, load-balancing recommendations, and decision audit trails from the FastAPI backend.
 
-First, run the development server:
+This README is specific to the frontend app. For full system architecture, backend setup, benchmarking, and deployment notes, see the root [`README.md`](../README.md).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## Stack
+
+- Next.js App Router
+- React
+- TypeScript
+- Tailwind CSS
+- Recharts
+- WebSocket-triggered live refresh
+
+---
+
+## Environment
+
+Create `frontend/.env.local` for local development:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws/live
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+For hosted deployment, use HTTPS/WSS URLs:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+NEXT_PUBLIC_API_BASE_URL=https://<backend-host>
+NEXT_PUBLIC_WS_URL=wss://<backend-host>/ws/live
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+If `NEXT_PUBLIC_WS_URL` is omitted, the frontend attempts to derive it from `NEXT_PUBLIC_API_BASE_URL`.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Run Locally
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Open:
 
-## Deploy on Vercel
+```text
+http://localhost:3000/dashboard
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Build and Lint
+
+```bash
+npm run lint
+npm run build
+```
+
+---
+
+## Main Pages
+
+| Route | Purpose |
+|---|---|
+| `/dashboard` | Grid overview, metrics, AI risk, load balancing, load trend |
+| `/telemetry` | Recent telemetry rows and timestamp evidence |
+| `/nodes` | Current substation health from latest telemetry and active faults |
+| `/analytics` | Load, node efficiency, and fault summaries |
+| `/predictions` | Cloud-side AI prediction records and risk score |
+| `/alerts` | Fault/alert history |
+| `/load-balancing` | Load distribution and recommendation workflow |
+| `/settings` | Refresh interval, alert threshold, and appearance controls |
+
+---
+
+## Live Update Model
+
+The frontend treats backend data as the source of truth. WebSocket events do not create telemetry directly; they trigger page refreshes so server-rendered pages refetch current backend data.
+
+```text
+Backend inserts/updates data → WebSocket event → frontend refresh → latest API data displayed
+```
+
+Chart timestamps come from telemetry records, not from the browser clock or WebSocket receive time.
