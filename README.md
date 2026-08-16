@@ -1,6 +1,6 @@
 # V.E.N.U.S.
 
-**Virtual Edge-Node Unified System — Real-Time Smart-Grid Monitoring and Load Management**
+**Virtual Edge-Node Unified System - Real-Time Smart-Grid Monitoring and Load Management**
 
 V.E.N.U.S. is a full-stack smart-grid monitoring and decision-support prototype for real-time telemetry ingestion, simulated edge anomaly detection, cloud-side AI fault prediction, and operator-supervised load-balancing recommendations.
 
@@ -20,15 +20,15 @@ https://venusnotplanet.vercel.app/
 
 ## Key Capabilities
 
-- **Real-time telemetry ingestion** — voltage, current, temperature, load, and frequency from simulated substations A, B, and C.
-- **Simulated edge anomaly detection** — Isolation Forest enriches telemetry with edge anomaly scores before cloud persistence.
-- **Cloud-side AI fault prediction** — XGBoost classifies recent telemetry into normal or likely fault conditions.
-- **Live operator dashboard** — WebSocket-triggered updates refresh telemetry, node health, analytics, predictions, alerts, and balancing data.
-- **Node and grid health monitoring** — current health uses latest telemetry and a configurable recent active-fault window rather than treating all historical faults as active.
-- **Load-balancing decision support** — engine recommends simulated load shifts and supports operator approval/rejection.
-- **Decision audit trail** — records balancing triggers, decisions, operator workflow, status, and observed impact.
-- **Benchmark evidence** — latency, throughput, AI evaluation, edge/cloud comparison, and resource-profile scripts support repeatable validation.
-- **Deployment support** — production Docker Compose files for backend/infrastructure and Vercel-compatible frontend configuration.
+- **Real-time telemetry ingestion** - voltage, current, temperature, load, and frequency from simulated substations A, B, and C.
+- **Simulated edge anomaly detection** - Isolation Forest enriches telemetry with edge anomaly scores before cloud persistence.
+- **Cloud-side AI fault prediction** - XGBoost classifies recent telemetry into normal or likely fault conditions.
+- **Live operator dashboard** - WebSocket-triggered updates refresh telemetry, node health, analytics, predictions, alerts, and balancing data.
+- **Node and grid health monitoring** - current health uses latest telemetry and a configurable recent active-fault window rather than treating all historical faults as active.
+- **Load-balancing decision support** - engine recommends simulated load shifts and supports operator approval/rejection.
+- **Decision audit trail** - records balancing triggers, decisions, operator workflow, status, and observed impact.
+- **Benchmark evidence** - latency, throughput, AI evaluation, edge/cloud comparison, and resource-profile scripts support repeatable validation.
+- **Deployment support** - production Docker Compose files for backend/infrastructure and Vercel-compatible frontend configuration.
 
 ---
 
