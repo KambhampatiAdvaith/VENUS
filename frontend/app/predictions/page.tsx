@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
-import { api, PredictionRecord } from "../../services/api";
+import { api, PredictionRecord, PredictionMetrics } from "../../services/api";
 import { getRefreshIntervalMs } from "../../services/settings";
 import { createWebSocketClient } from "../../services/websocket";
 
@@ -79,6 +79,7 @@ function getRiskColor(riskLevel: string): string {
 
 export default function Predictions() {
     const [predictions, setPredictions] = useState<PredictionRecord[]>([]);
+    const [predictionMetrics, setPredictionMetrics] = useState<PredictionMetrics | null>(null);
     const [loading, setLoading] = useState(true);
     const [running, setRunning] = useState(false);
     const [lastUpdated, setLastUpdated] = useState("");
@@ -88,8 +89,12 @@ export default function Predictions() {
 
     const loadPredictions = useCallback(async () => {
         try {
-            const predictionRecords = await api.getPredictions(50);
+            const [predictionRecords, metrics] = await Promise.all([
+                api.getPredictions(50),
+                api.getPredictionMetrics(),
+            ]);
             setPredictions(predictionRecords);
+            setPredictionMetrics(metrics);
             setFetchError(false);
             setLastUpdated(
                 new Date().toLocaleTimeString("en-GB", {
@@ -163,12 +168,14 @@ export default function Predictions() {
     );
 
     const averageRiskScore =
-        predictions.length > 0
-            ? predictions.reduce(
-                (sum, prediction) => sum + prediction.probability,
-                0
-            ) / predictions.length
-            : 0;
+        predictionMetrics != null
+            ? predictionMetrics.risk_score
+            : predictions.length > 0
+                ? predictions.reduce(
+                    (sum, prediction) => sum + prediction.probability,
+                    0
+                ) / predictions.length
+                : 0;
 
     const highRiskCount = predictions.filter(
         (prediction) =>
@@ -178,11 +185,18 @@ export default function Predictions() {
     ).length;
 
     const systemRiskLevel =
-        highRiskCount > 0
-            ? "High"
-            : predictedFaults.length > 0
-                ? "Medium"
-                : "Low";
+        predictionMetrics != null
+            ? predictionMetrics.system_risk_level
+            : highRiskCount > 0
+                ? "High"
+                : predictedFaults.length > 0
+                    ? "Medium"
+                    : "Low";
+
+    const summaryPredictedFaults =
+        predictionMetrics != null
+            ? predictionMetrics.predicted_faults
+            : predictedFaults.length;
 
 
     return (
@@ -244,7 +258,7 @@ export default function Predictions() {
                                 </p>
                                 <p className="mt-1 text-sm text-cyan-200/80">
                                     {predictions.length > 0
-                                        ? `${predictions.length} prediction${predictions.length !== 1 ? "s" : ""} analysed · auto-refreshes on new events.`
+                                        ? `${predictions.length} prediction${predictions.length !== 1 ? "s" : ""} analysed · summary from latest per-substation metrics · auto-refreshes on new events.`
                                         : "Click \u201cRefresh Now\u201d or wait for a scheduled prediction cycle."}
                                 </p>
                             </div>
@@ -291,7 +305,7 @@ export default function Predictions() {
                         </h3>
 
                         <p className="text-3xl font-bold mt-2">
-                            {predictedFaults.length}
+                            {summaryPredictedFaults}
                         </p>
                     </div>
 
