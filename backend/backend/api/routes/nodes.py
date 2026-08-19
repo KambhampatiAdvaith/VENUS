@@ -20,9 +20,10 @@ def get_node_status(
     frequency: float,
     load: float,
     fault_count: int,
-) -> str:
+) -> tuple[str, str | None]:
+    """Return (status, reason)"""
     if fault_count > 0:
-        return "fault"
+        return "fault", "Active fault event"
 
     if (
         temperature > 85
@@ -32,9 +33,9 @@ def get_node_status(
         or frequency > 50.5
         or load > 80
     ):
-        return "warning"
+        return "warning", "Threshold exceeded"
 
-    return "healthy"
+    return "healthy", None
 
 
 @router.get("", response_model=list[NodeStatusResponse])
@@ -103,25 +104,24 @@ def get_nodes(db: Session = Depends(get_db)):
     nodes = []
 
     for telemetry in latest_telemetry:
+        status, reason = get_node_status(
+            temperature=telemetry["temperature"],
+            voltage=telemetry["voltage"],
+            frequency=telemetry["frequency"],
+            load=telemetry["load"],
+            fault_count=active_fault_counts.get(telemetry["substation"], 0),
+        )
+
         nodes.append(
             {
                 "node": telemetry["substation"],
-                "status": get_node_status(
-                    temperature=telemetry["temperature"],
-                    voltage=telemetry["voltage"],
-                    frequency=telemetry["frequency"],
-                    load=telemetry["load"],
-                    fault_count=active_fault_counts.get(
-                        telemetry["substation"],
-                        0,
-                    ),
-                ),
+                "status": status,
+                "reason": reason,
                 "load": telemetry["load"],
                 "voltage": telemetry["voltage"],
                 "temperature": telemetry["temperature"],
                 "frequency": telemetry["frequency"],
-                "last_updated": telemetry["database_written_at"]
-                or telemetry["timestamp"],
+                "last_updated": telemetry["database_written_at"] or telemetry["timestamp"],
             }
         )
 
