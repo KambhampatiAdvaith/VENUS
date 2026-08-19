@@ -30,7 +30,17 @@ def get_dashboard_metrics(db: Session = Depends(get_db)):
     avg_load_result = db.query(func.avg(Telemetry.load)).scalar()
     avg_load = round(float(avg_load_result), 2) if avg_load_result else 0.0
 
-    system_health = get_system_health_for_active_faults(active_faults)
+    # Prioritize active faults for system health; otherwise derive from average load
+    if active_faults > 0:
+        system_health = get_system_health_for_active_faults(active_faults)
+    else:
+        # Derive health from average load when there are no active faults
+        if avg_load >= 80:
+            system_health = "critical"
+        elif avg_load >= 60:
+            system_health = "warning"
+        else:
+            system_health = "healthy"
 
     return {
         "total_nodes": total_nodes,
