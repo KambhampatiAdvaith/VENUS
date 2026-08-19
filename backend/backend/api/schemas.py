@@ -54,6 +54,7 @@ class DashboardMetrics(DashboardMetricsResponse):
 class NodeStatusResponse(BaseModel):
     node: str
     status: str
+    reason: str | None = None
     load: float | None = None
     voltage: float | None = None
     temperature: float | None = None
