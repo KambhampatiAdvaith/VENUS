@@ -177,6 +177,12 @@ export default function Predictions() {
                 ) / predictions.length
                 : 0;
 
+    // Normalize to a single percent value for display.
+    const displayedAvgPercent =
+        predictionMetrics != null
+            ? predictionMetrics.risk_score // already 0..100 from backend
+            : averageRiskScore * 100; // fallback: averageRiskScore is 0..1
+
     const highRiskCount = predictions.filter(
         (prediction) =>
             prediction.anomaly ||
@@ -258,7 +264,7 @@ export default function Predictions() {
                                 </p>
                                 <p className="mt-1 text-sm text-cyan-200/80">
                                     {predictions.length > 0
-                                        ? `${predictions.length} prediction${predictions.length !== 1 ? "s" : ""} analysed · summary from latest per-substation metrics · auto-refreshes on new events.`
+                                        ? `${predictions.length} prediction${predictions.length !== 1 ? "s" : ""} analysed · summary from latest per-substation metrics · auto-refreshes on new events`
                                         : "Click \u201cRefresh Now\u201d or wait for a scheduled prediction cycle."}
                                 </p>
                             </div>
@@ -280,7 +286,7 @@ export default function Predictions() {
                                     <div>
                                         <p className="text-cyan-300">Avg Risk Score</p>
                                         <p className="font-semibold">
-                                            {(averageRiskScore * 100).toFixed(1)}%
+                                            {displayedAvgPercent.toFixed(1)}%
                                         </p>
                                     </div>
                                 </div>
@@ -315,7 +321,7 @@ export default function Predictions() {
                         </h3>
 
                         <p className="text-3xl font-bold mt-2">
-                            {(averageRiskScore * 100).toFixed(2)}%
+                            {displayedAvgPercent.toFixed(2)}%
                         </p>
                     </div>
 

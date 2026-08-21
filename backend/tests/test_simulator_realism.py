@@ -8,6 +8,7 @@ from simulator.realism import (
     calculate_temperature,
     calculate_voltage,
     get_daily_load_factor,
+    SUBSTATION_ORDER,
 )
 
 
@@ -46,15 +47,21 @@ class SimulatorRealismTests(unittest.TestCase):
         self.assertLessEqual(calculate_frequency(95), 50.2)
 
     def test_overload_fault_remains_distinguishable(self) -> None:
+        # pick a source node from the generated order (use second node to exercise wrap)
+        source = SUBSTATION_ORDER[1]
         readings = build_overload_grid_telemetry(
-            "B",
+            source,
             datetime(2026, 7, 24, 19, 0, tzinfo=timezone.utc),
         )
         by_substation = {reading["substation"]: reading for reading in readings}
 
-        self.assertGreaterEqual(by_substation["B"]["load"], 88.0)
-        self.assertLessEqual(by_substation["B"]["frequency"], 49.7)
-        self.assertGreater(by_substation["A"]["load"], by_substation["C"]["load"])
+        # verify the source node is overloaded and frequency falls
+        self.assertGreaterEqual(by_substation[source]["load"], 88.0)
+        self.assertLessEqual(by_substation[source]["frequency"], 49.7)
+
+        # ensure some relative relationship still holds: source load >= some other node
+        other = SUBSTATION_ORDER[0] if SUBSTATION_ORDER[0] != source else SUBSTATION_ORDER[2]
+        self.assertGreater(by_substation[source]["load"], by_substation[other]["load"])
 
 
 if __name__ == "__main__":

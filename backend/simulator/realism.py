@@ -2,31 +2,29 @@ import random
 from datetime import datetime, timezone
 
 
-SUBSTATION_PROFILES = {
-    "A": {
-        "load_offset": 0.8,
-        "voltage_offset": 0.3,
-        "temperature_offset": 0.0,
-        "current_offset": 0.0,
-        "correlation_factor": 1.0,
-    },
-    "B": {
-        "load_offset": 2.4,
-        "voltage_offset": -0.2,
-        "temperature_offset": 0.8,
-        "current_offset": 0.5,
-        "correlation_factor": 0.6,
-    },
-    "C": {
-        "load_offset": -1.6,
-        "voltage_offset": 0.5,
-        "temperature_offset": -0.5,
-        "current_offset": -0.4,
-        "correlation_factor": -0.7,
-    },
-}
+# --- replaced block: generate 25 substations (N01..N25) with deterministic offsets
+SUBSTATION_PROFILES = {}
+for i in range(1, 26):
+    sid = f"N{str(i).zfill(2)}"  # N01, N02, ..., N25
+    # Generate deterministic but varied offsets based on index
+    load_offset = ((i % 5) - 2) * 0.9  # values in {-1.8, -0.9, 0.0, 0.9, 1.8}
+    voltage_offset = (((i * 7) % 11) - 5) * 0.1  # small voltage offsets
+    temperature_offset = ((i % 4) - 1) * 0.6  # [-1.2, -0.6, 0.0, 0.6]
+    current_offset = (((i * 3) % 7) - 3) * 0.2  # small current offsets
+    # correlation factor lets some nodes be correlated (positive/negative)
+    corr = [1.0, 0.6, -0.7, 0.3, -0.4][i % 5]
+
+    SUBSTATION_PROFILES[sid] = {
+        "load_offset": load_offset,
+        "voltage_offset": voltage_offset,
+        "temperature_offset": temperature_offset,
+        "current_offset": current_offset,
+        "correlation_factor": corr,
+    }
 
 SUBSTATION_ORDER = tuple(SUBSTATION_PROFILES.keys())
+# --- end replaced block
+
 VOLTAGE_CURVE_POINTS = (
     (40.0, 231.0),
     (60.0, 229.0),
@@ -184,7 +182,14 @@ def build_overload_grid_telemetry(
 ) -> list[dict[str, float | str]]:
     current_time = ensure_timestamp(timestamp)
     readings = build_normal_grid_telemetry(current_time)
-    support_node = {"A": "B", "B": "A", "C": "B"}[source_node]
+
+    # Support node selection: pick the next node in SUBSTATION_ORDER (wrap-around).
+    try:
+        idx = SUBSTATION_ORDER.index(source_node)
+        support_node = SUBSTATION_ORDER[(idx + 1) % len(SUBSTATION_ORDER)]
+    except ValueError:
+        # fallback to first node if source_node not found
+        support_node = SUBSTATION_ORDER[0]
 
     for reading in readings:
         substation = str(reading["substation"])
