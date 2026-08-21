@@ -2,17 +2,17 @@ import random
 from datetime import datetime, timezone
 
 
-# --- replaced block: generate 25 substations (N01..N25) with deterministic offsets
+# Generate 20 nodes named "Node 01" .. "Node 20" with small deterministic
+# offsets so telemetry remains varied and deterministic enough for tests.
 SUBSTATION_PROFILES = {}
-for i in range(1, 26):
-    sid = f"N{str(i).zfill(2)}"  # N01, N02, ..., N25
-    # Generate deterministic but varied offsets based on index
-    load_offset = ((i % 5) - 2) * 0.9  # values in {-1.8, -0.9, 0.0, 0.9, 1.8}
-    voltage_offset = (((i * 7) % 11) - 5) * 0.1  # small voltage offsets
-    temperature_offset = ((i % 4) - 1) * 0.6  # [-1.2, -0.6, 0.0, 0.6]
-    current_offset = (((i * 3) % 7) - 3) * 0.2  # small current offsets
-    # correlation factor lets some nodes be correlated (positive/negative)
-    corr = [1.0, 0.6, -0.7, 0.3, -0.4][i % 5]
+for i in range(1, 21):
+    sid = f"Node {str(i).zfill(2)}"  # Node 01 .. Node 20
+    # Deterministic offsets for variety
+    load_offset = ((i % 5) - 2) * 0.8
+    voltage_offset = (((i * 7) % 11) - 5) * 0.08
+    temperature_offset = ((i % 4) - 1) * 0.5
+    current_offset = (((i * 3) % 7) - 3) * 0.18
+    corr = [1.0, 0.6, -0.5, 0.3, -0.4][i % 5]
 
     SUBSTATION_PROFILES[sid] = {
         "load_offset": load_offset,
@@ -23,7 +23,6 @@ for i in range(1, 26):
     }
 
 SUBSTATION_ORDER = tuple(SUBSTATION_PROFILES.keys())
-# --- end replaced block
 
 VOLTAGE_CURVE_POINTS = (
     (40.0, 231.0),
@@ -70,7 +69,8 @@ def get_daily_load_factor(hour: float) -> float:
 
 def calculate_voltage(load: float, voltage_offset: float = 0.0, noise: float = 0.0) -> float:
     base_voltage = interpolate_curve(load, VOLTAGE_CURVE_POINTS)
-    return clamp(base_voltage + voltage_offset + noise, 220.0, 233.0)
+    # Normal range centered ~229-231; allow noise and offsets
+    return clamp(base_voltage + voltage_offset + noise, 210.0, 236.0)
 
 
 def calculate_temperature(
@@ -79,17 +79,17 @@ def calculate_temperature(
     noise: float = 0.0,
 ) -> float:
     base_temperature = 33.0 + max(load - 35.0, 0.0) * 0.45
-    return clamp(base_temperature + baseline_offset + noise, 32.0, 58.0)
+    return clamp(base_temperature + baseline_offset + noise, 32.0, 80.0)
 
 
 def calculate_frequency(load: float, grid_bias: float = 0.0, noise: float = 0.0) -> float:
     base_frequency = 50.05 - max(load - 45.0, 0.0) * 0.0032
-    return clamp(base_frequency + grid_bias + noise, 49.8, 50.2)
+    return clamp(base_frequency + grid_bias + noise, 47.0, 51.0)
 
 
 def calculate_current(load: float, current_offset: float = 0.0, noise: float = 0.0) -> float:
     base_current = 14.5 + load * 0.27
-    return clamp(base_current + current_offset + noise, 20.0, 40.0)
+    return clamp(base_current + current_offset + noise, 10.0, 80.0)
 
 
 def ensure_timestamp(timestamp: datetime | None = None) -> datetime:
@@ -169,11 +169,52 @@ def build_substation_telemetry(
 
 
 def build_normal_grid_telemetry(timestamp: datetime | None = None) -> list[dict[str, float | str]]:
+    """
+    Build normal telemetry for all substations. Inject occasional faults for
+    Node 01 and Node 02 (~12% probability) and rare anomalies for Node 03..20
+    (~2% probability).
+    """
     current_time = ensure_timestamp(timestamp)
-    return [
+    readings = [
         build_substation_telemetry(substation, current_time)
         for substation in SUBSTATION_ORDER
     ]
+
+    # Apply probabilistic faults/anomalies using a stable RNG per cycle
+    cycle_rng = random.Random(int(current_time.timestamp()) // 15)
+
+    def inject_heavy_fault(reading: dict[str, float | str], rng: random.Random) -> None:
+        # Heavy fault ranges per spec
+        reading["load"] = round(rng.uniform(85.0, 92.0), 2)
+        reading["voltage"] = round(rng.uniform(210.0, 215.0), 2)
+        reading["temperature"] = round(rng.uniform(70.0, 75.0), 2)
+        reading["frequency"] = round(rng.uniform(49.3, 49.5), 2)
+        reading["current"] = round(calculate_current(float(reading["load"])), 2)
+
+    def inject_minor_anomaly(reading: dict[str, float | str], rng: random.Random) -> None:
+        # Small deviations but keep within mostly normal bounds
+        choice = rng.choice(["load", "voltage", "temperature", "frequency"])
+        if choice == "load":
+            reading["load"] = round(clamp(float(reading["load"]) + rng.uniform(5.0, 12.0), 35.0, 90.0), 2)
+            reading["current"] = round(calculate_current(float(reading["load"])), 2)
+        elif choice == "voltage":
+            reading["voltage"] = round(clamp(float(reading["voltage"]) + rng.uniform(-6.0, 6.0), 220.0, 236.0), 2)
+        elif choice == "temperature":
+            reading["temperature"] = round(clamp(float(reading["temperature"]) + rng.uniform(6.0, 12.0), 32.0, 80.0), 2)
+        else:
+            reading["frequency"] = round(clamp(float(reading["frequency"]) + rng.uniform(-0.4, 0.4), 47.0, 51.0), 2)
+
+    for reading in readings:
+        sub = str(reading["substation"])
+        node_rng = random.Random(f"{sub}:{int(current_time.timestamp()) // 15}")
+        if sub in ("Node 01", "Node 02"):
+            if node_rng.random() < 0.12:
+                inject_heavy_fault(reading, node_rng)
+        else:
+            if node_rng.random() < 0.02:
+                inject_minor_anomaly(reading, node_rng)
+
+    return readings
 
 
 def build_overload_grid_telemetry(
