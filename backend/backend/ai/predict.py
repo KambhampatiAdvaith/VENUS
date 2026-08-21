@@ -164,6 +164,53 @@ def create_ai_alert_if_needed(
     return dict(inserted_fault) if inserted_fault is not None else None
 
 
+def is_genuine_fault_row(row) -> bool:
+    """Return True if the telemetry row contains a genuine threshold breach.
+
+    Conditions:
+    - Load >= 80%
+    - OR Voltage < 210V
+    - OR Temperature >= 70°C
+    """
+    try:
+        _load = float(row.get("load", 0))
+        _voltage = float(row.get("voltage", 0))
+        _temperature = float(row.get("temperature", 0))
+    except Exception:
+        return False
+
+    if _load >= 80.0:
+        return True
+
+    if _voltage < 210.0:
+        return True
+
+    if _temperature >= 70.0:
+        return True
+
+    return False
+
+
+def _map_probability_to_risk(probability: float, genuine_fault: bool) -> str:
+    """Map probability to risk level with Critical only for genuine faults.
+
+    - probability < 0.4 = Low
+    - probability 0.4 to 0.6 = Medium
+    - probability 0.6 to 0.8 = High
+    - probability > 0.8 = Critical (only when genuine_fault is True)
+    """
+    if probability > 0.8:
+        return "Critical" if genuine_fault else "High"
+
+    if probability >= 0.6:
+        return "High"
+
+    if probability >= 0.4:
+        return "Medium"
+
+    return "Low"
+
+
 def predict_latest(on_fault_created: Callable[[dict], None] | None = None):
     engine = get_engine()
     ensure_predictions_table(engine)
@@ -196,10 +243,20 @@ def predict_latest(on_fault_created: Callable[[dict], None] | None = None):
 
         substation = row["substation"]
 
+        # Enforce genuine-fault gating: do not mark predicted_fault unless
+        # telemetry shows a genuine threshold breach.
+        genuine = is_genuine_fault_row(row)
+
+        if not genuine:
+            # Never mark predicted_fault for normal telemetry
+            stored_predicted_fault = "normal"
+        else:
+            stored_predicted_fault = predicted_fault
+
         insert_prediction(
             engine=engine,
             substation=substation,
-            predicted_fault=predicted_fault,
+            predicted_fault=stored_predicted_fault,
             probability=probability,
             anomaly=anomaly,
             anomaly_score=anomaly_score,
@@ -208,7 +265,7 @@ def predict_latest(on_fault_created: Callable[[dict], None] | None = None):
         created_fault = create_ai_alert_if_needed(
             engine=engine,
             substation=substation,
-            predicted_fault=predicted_fault,
+            predicted_fault=stored_predicted_fault,
             probability=probability,
             anomaly=anomaly,
             anomaly_score=anomaly_score,
@@ -217,13 +274,16 @@ def predict_latest(on_fault_created: Callable[[dict], None] | None = None):
         if created_fault is not None and on_fault_created is not None:
             on_fault_created(created_fault)
 
+        risk_level = _map_probability_to_risk(probability, genuine)
+
         prediction_results.append(
             {
                 "substation": substation,
-                "predicted_fault": predicted_fault,
+                "predicted_fault": stored_predicted_fault,
                 "probability": probability,
                 "anomaly": anomaly,
                 "anomaly_score": anomaly_score,
+                "risk_level": risk_level,
             }
         )
 
