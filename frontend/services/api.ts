@@ -40,6 +40,7 @@ export type DashboardMetrics = {
 export type NodeStatus = {
     node: string;
     status: string;
+    reason?: string | null;
     load: number | null;
     voltage: number | null;
     temperature: number | null;
@@ -226,6 +227,10 @@ export const api = {
 
     getPredictions(limit = 50): Promise<PredictionRecord[]> {
         return apiFetch<PredictionRecord[]>(`/predictions?limit=${limit}`);
+    },
+
+    getLatestPredictions(): Promise<PredictionRecord[]> {
+        return apiFetch<PredictionRecord[]>("/predictions/latest");
     },
 
 

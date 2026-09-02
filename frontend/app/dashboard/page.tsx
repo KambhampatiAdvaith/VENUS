@@ -22,51 +22,33 @@ import {
   LoadBalancingImpact,
   LoadBalancingSummary,
   LatencyMetrics,
+  FaultRecord,
 } from "../../services/api";
 
 export const dynamic = "force-dynamic";
 
 
 const fallbackMetrics: DashboardMetrics = {
-  total_nodes: 3,
+  total_nodes: 20,
   active_faults: 0,
   avg_load: 0,
   system_health: "unknown",
 };
 
 
-const fallbackNodes: NodeStatus[] = [
-  {
-    node: "A",
-    status: "unknown",
-    load: null,
-    voltage: null,
-    temperature: null,
-    frequency: null,
-    last_updated: null,
-  },
-  {
-    node: "B",
-    status: "unknown",
-    load: null,
-    voltage: null,
-    temperature: null,
-    frequency: null,
-    last_updated: null,
-  },
-  {
-    node: "C",
-    status: "unknown",
-    load: null,
-    voltage: null,
-    temperature: null,
-    frequency: null,
-    last_updated: null,
-  },
-];
+const fallbackNodes: NodeStatus[] = Array.from({ length: 20 }, (_, index) => ({
+  node: String(index + 1),
+  status: "unknown",
+  load: null,
+  voltage: null,
+  temperature: null,
+  frequency: null,
+  last_updated: null,
+}));
 
 
 const fallbackTelemetry: TelemetryRecord[] = [];
+const fallbackFaults: FaultRecord[] = [];
 
 
 const fallbackPredictionMetrics: PredictionMetrics = {
@@ -144,7 +126,11 @@ function getStatusBorder(status: string): string {
 function buildLoadChartData(telemetry: TelemetryRecord[]): LoadChartData[] {
   return telemetry
     .slice()
-    .reverse()
+    .sort((left, right) => {
+      const leftTime = Date.parse(left.database_written_at ?? left.timestamp);
+      const rightTime = Date.parse(right.database_written_at ?? right.timestamp);
+      return leftTime - rightTime;
+    })
     .map((item) => ({
       time: formatDisplayTime(item),
       fullTimestamp: formatDisplayTimestamp(item),
@@ -271,6 +257,7 @@ export default async function Dashboard() {
   let latestLoadBalancingImpact: LoadBalancingImpact | null = null;
   let loadBalancingSummary = fallbackLoadBalancingSummary;
   let latencyMetrics = fallbackLatencyMetrics;
+  let faults = fallbackFaults;
   const criticalFailures: string[] = [];
   const optionalFailures: string[] = [];
   let apiError = false;
@@ -284,6 +271,7 @@ export default async function Dashboard() {
     latestLoadBalancingImpactResponse,
     loadBalancingSummaryResponse,
     latencyMetricsResponse,
+    faultsResponse,
   ] = await Promise.allSettled([
     api.getDashboardMetrics(),
     api.getNodes(),
@@ -293,6 +281,7 @@ export default async function Dashboard() {
     api.getLatestLoadBalancingImpact(),
     api.getLoadBalancingSummary(),
     api.getLatencyMetrics(),
+    api.getFaults(100),
   ]);
 
   metrics = readSettledValue(
@@ -346,6 +335,12 @@ export default async function Dashboard() {
     fallbackLatencyMetrics,
     optionalFailures,
   );
+  faults = readSettledValue(
+    faultsResponse,
+    "fault history",
+    fallbackFaults,
+    optionalFailures,
+  );
   apiError = criticalFailures.length > 0;
 
   const loadChartData = buildLoadChartData(telemetry);
@@ -397,17 +392,17 @@ export default async function Dashboard() {
           subtext={
             telemetryFreshness.isStale
               ? "Latest telemetry is stale; live analysis will update when new events arrive."
-              : `Fresh telemetry received ${telemetryFreshness.dataAge} ago.`
+              : `Fresh telemetry received ${telemetryFreshness.dataAge} ago. Active faults: ${metrics.active_faults} (active window) vs historical fault records: ${faults.length}.`
           }
           isStale={telemetryFreshness.isStale}
           metrics={[
-            { label: "Avg Load", value: `${metrics.avg_load}%` },
+            { label: "Avg Load (latest)", value: `${metrics.avg_load}%` },
             { label: "Grid Health", value: formatHealthStatus(metrics.system_health) },
             {
-              label: "Predicted Faults",
+              label: "Predicted Faults (latest)",
               value: String(predictionMetrics.predicted_faults),
             },
-            { label: "AI Risk", value: `${predictionMetrics.risk_score}%` },
+            { label: "AI Prediction Confidence", value: `${predictionMetrics.risk_score}%` },
           ]}
         />
 
@@ -495,16 +490,22 @@ export default async function Dashboard() {
             <MetricCard
               title="Total Nodes"
               value={String(metrics.total_nodes)}
+              unitLabel="substations"
+              formulaHint="Count of distinct substations in telemetry"
             />
 
             <MetricCard
               title="Active Faults"
               value={String(metrics.active_faults)}
+              unitLabel="fault events"
+              formulaHint="Fault events with timestamp inside ACTIVE_FAULT_WINDOW_MINUTES"
             />
 
             <MetricCard
               title="Average Load"
               value={`${metrics.avg_load}%`}
+              unitLabel="% load"
+              formulaHint="Average(load) across latest telemetry records"
             />
 
             <div
@@ -573,7 +574,7 @@ export default async function Dashboard() {
             <div className="bg-slate-900 rounded-xl p-6 border border-yellow-500/40 min-h-[150px]">
               <div className="flex items-center justify-between">
                 <h3 className="text-slate-400">
-                  AI Risk Score
+                  AI Prediction Confidence
                 </h3>
 
                 <span className="text-yellow-400 text-sm">
@@ -586,7 +587,7 @@ export default async function Dashboard() {
               </p>
 
               <p className="text-slate-500 text-sm mt-3">
-                Average confidence from recent prediction cycles
+                Average confidence across latest per-substation predictions
               </p>
             </div>
 

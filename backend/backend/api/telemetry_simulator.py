@@ -40,10 +40,10 @@ def generate_telemetry_cycle() -> tuple[str, list[dict[str, Any]]]:
     )
 
     if scenario == "overload_b":
-        return "overload_b", build_overload_telemetry("B")
+        return "overload_b", build_overload_telemetry("2")
 
     if scenario == "overload_c":
-        return "overload_c", build_overload_telemetry("C")
+        return "overload_c", build_overload_telemetry("3")
 
     return "normal", build_normal_telemetry()
 
@@ -227,7 +227,7 @@ async def simulate_normal_telemetry():
 
 @router.post("/telemetry/simulate/overload-b")
 async def simulate_overload_b_telemetry():
-    readings = build_overload_telemetry("B")
+    readings = build_overload_telemetry("2")
     inserted_rows = insert_telemetry(readings)
     await broadcast_inserted_telemetry("overload_b", inserted_rows)
 
@@ -241,7 +241,7 @@ async def simulate_overload_b_telemetry():
 
 @router.post("/telemetry/simulate/overload-c")
 async def simulate_overload_c_telemetry():
-    readings = build_overload_telemetry("C")
+    readings = build_overload_telemetry("3")
     inserted_rows = insert_telemetry(readings)
     await broadcast_inserted_telemetry("overload_c", inserted_rows)
 
@@ -255,7 +255,7 @@ async def simulate_overload_c_telemetry():
 
 @router.post("/telemetry/simulate/fault")
 async def simulate_fault_telemetry():
-    source_node = random.choice(["A", "B", "C"])
+    source_node = random.choice(["1", "2", "3"])
     readings = build_overload_telemetry(source_node)
     inserted_rows = insert_telemetry(readings)
     await broadcast_inserted_telemetry("fault", inserted_rows)

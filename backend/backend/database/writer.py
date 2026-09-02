@@ -14,6 +14,21 @@ SEVERITY_MAP = {
 logger = get_logger("backend.database.writer")
 
 
+def normalize_utc_timestamp(value, *, field_name: str) -> datetime:
+    if isinstance(value, datetime):
+        timestamp = value
+    elif isinstance(value, str):
+        normalized = value.replace("Z", "+00:00")
+        timestamp = datetime.fromisoformat(normalized)
+    else:
+        raise ValueError(f"Invalid {field_name} value: {value!r}")
+
+    if timestamp.tzinfo is None:
+        return timestamp.replace(tzinfo=UTC)
+
+    return timestamp.astimezone(UTC)
+
+
 def insert_telemetry(data: dict) -> dict | None:
     query = """
         INSERT INTO telemetry (
@@ -36,9 +51,33 @@ def insert_telemetry(data: dict) -> dict | None:
     """
 
     now_utc = datetime.now(UTC)
+    payload_timestamp = normalize_utc_timestamp(
+        data["timestamp"],
+        field_name="timestamp",
+    )
 
     # generated_at: prefer explicit field, fall back to payload timestamp
-    generated_at = data.get("generated_at") or data.get("timestamp")
+    generated_at_raw = data.get("generated_at") or payload_timestamp
+    generated_at = normalize_utc_timestamp(
+        generated_at_raw,
+        field_name="generated_at",
+    )
+    kafka_received_at = (
+        normalize_utc_timestamp(
+            data["kafka_received_at"],
+            field_name="kafka_received_at",
+        )
+        if data.get("kafka_received_at") is not None
+        else None
+    )
+    edge_processed_at = (
+        normalize_utc_timestamp(
+            data["edge_processed_at"],
+            field_name="edge_processed_at",
+        )
+        if data.get("edge_processed_at") is not None
+        else None
+    )
 
     values = (
         data["substation"],
@@ -47,13 +86,13 @@ def insert_telemetry(data: dict) -> dict | None:
         data["temperature"],
         data["load"],
         data["frequency"],
-        data["timestamp"],
+        payload_timestamp,
         data.get("edge_anomaly", False),
         data.get("edge_anomaly_score"),
         data.get("edge_model"),
-        data.get("edge_processed_at"),
+        edge_processed_at,
         generated_at,
-        data.get("kafka_received_at"),
+        kafka_received_at,
         now_utc,
     )
 
@@ -64,14 +103,18 @@ def insert_telemetry(data: dict) -> dict | None:
         cursor.execute(query, values)
         connection.commit()
         logger.debug(
-            "Telemetry inserted for substation=%s | edge_score=%s",
+            "Telemetry inserted for substation=%s at %s | db_written_at=%s | edge_score=%s",
             data["substation"],
+            payload_timestamp.isoformat(),
+            now_utc.isoformat(),
             data.get("edge_anomaly_score"),
         )
         result = dict(data)
+        result["timestamp"] = payload_timestamp
+        result["generated_at"] = generated_at
+        result["kafka_received_at"] = kafka_received_at
+        result["edge_processed_at"] = edge_processed_at
         result["database_written_at"] = now_utc
-        if "generated_at" not in result:
-            result["generated_at"] = generated_at
         return result
 
     except Exception:
@@ -109,7 +152,7 @@ def insert_fault(data: dict) -> dict | None:
         data["substation"],
         fault_type,
         severity,
-        data["timestamp"],
+        fault_timestamp,
     )
 
     connection = get_connection()
@@ -120,9 +163,10 @@ def insert_fault(data: dict) -> dict | None:
         inserted_fault = cursor.fetchone()
         connection.commit()
         logger.debug(
-            "Fault inserted for substation=%s with fault_type=%s",
+            "Fault inserted for substation=%s with fault_type=%s at %s",
             data["substation"],
             fault_type,
+            fault_timestamp.isoformat(),
         )
         return {
             "id": inserted_fault[0],
@@ -144,3 +188,7 @@ def insert_fault(data: dict) -> dict | None:
     finally:
         cursor.close()
         connection.close()
+    fault_timestamp = normalize_utc_timestamp(
+        data["timestamp"],
+        field_name="timestamp",
+    )

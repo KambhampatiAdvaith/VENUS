@@ -24,12 +24,16 @@ python -m backend.database.init_db
 python -m uvicorn backend.api.main:app --reload
 ```
 
+`python -m backend.database.init_db` now also seeds one baseline telemetry row
+for each Substation `1..20` when a substation has no existing telemetry.
+
 ## Smoke-test endpoints
 
 - `GET /docs`
 - `GET /health`
 - `GET /telemetry?limit=10`
 - `GET /nodes`
+- `GET /predictions/latest`
 - `GET /load-balancing?limit=5`
 - `POST /load-balancing/recommend`
 - `GET /load-balancing/pending?limit=10`

@@ -56,6 +56,18 @@ export default async function Nodes() {
     .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
 
   const telemetryFreshness = getTelemetryFreshness(latestNodeTimestamp);
+  const orderedNodes = nodes.slice().sort(
+    (left, right) => {
+      const leftNumber = Number(left.node);
+      const rightNumber = Number(right.node);
+
+      if (Number.isNaN(leftNumber) || Number.isNaN(rightNumber)) {
+        return left.node.localeCompare(right.node);
+      }
+
+      return leftNumber - rightNumber;
+    },
+  );
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
@@ -91,7 +103,7 @@ export default async function Nodes() {
           subtext={
             telemetryFreshness.isStale
               ? "Node data is stale; display will update when new telemetry arrives."
-              : `Monitoring ${nodes.length} node${nodes.length !== 1 ? "s" : ""} · updated ${telemetryFreshness.dataAge} ago.`
+              : `Monitoring ${nodes.length}/20 substations · updated ${telemetryFreshness.dataAge} ago. Status uses active-fault window + latest telemetry thresholds.`
           }
           isStale={telemetryFreshness.isStale}
           metrics={[
@@ -115,7 +127,7 @@ export default async function Nodes() {
                 ).length,
               ),
             },
-            { label: "Total Nodes", value: String(nodes.length) },
+            { label: "Total Substations", value: "20" },
           ]}
         />
 
@@ -157,6 +169,10 @@ export default async function Nodes() {
                 </th>
 
                 <th className="p-4 border border-slate-700 text-left">
+                  Reason
+                </th>
+
+                <th className="p-4 border border-slate-700 text-left">
                   Last Updated
                 </th>
               </tr>
@@ -166,7 +182,7 @@ export default async function Nodes() {
               {nodes.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="p-6 border border-slate-700"
                   >
                     <p className="font-semibold text-slate-300">No node status records yet</p>
@@ -179,7 +195,7 @@ export default async function Nodes() {
                   </td>
                 </tr>
               ) : (
-                nodes.map((node) => (
+                orderedNodes.map((node) => (
                   <tr
                     key={node.node}
                     className="hover:bg-slate-800 transition"
@@ -210,6 +226,10 @@ export default async function Nodes() {
                       {node.frequency !== null
                         ? `${node.frequency} Hz`
                         : "N/A"}
+                    </td>
+
+                    <td className="p-4 border border-slate-700 text-sm text-slate-300">
+                      {node.reason ?? "Telemetry within thresholds"}
                     </td>
 
                     <td className="p-4 border border-slate-700 text-sm text-slate-300">
