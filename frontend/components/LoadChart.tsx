@@ -77,12 +77,23 @@ function aggregateLoadTrend(data: LoadChartData[]): AggregatedLoadChartData[] {
     });
   });
 
-  return Array.from(grouped.values()).map((item) => ({
-    time: item.time,
-    fullTimestamp: item.fullTimestamp,
-    load: Number((item.totalLoad / item.sampleCount).toFixed(2)),
-    sampleCount: item.sampleCount,
-  }));
+  return Array.from(grouped.values())
+    .map((item) => ({
+      time: item.time,
+      fullTimestamp: item.fullTimestamp,
+      load: Number((item.totalLoad / item.sampleCount).toFixed(2)),
+      sampleCount: item.sampleCount,
+    }))
+    .sort((left, right) => {
+      const leftValue = Date.parse(left.fullTimestamp ?? left.time);
+      const rightValue = Date.parse(right.fullTimestamp ?? right.time);
+
+      if (Number.isNaN(leftValue) || Number.isNaN(rightValue)) {
+        return left.time.localeCompare(right.time);
+      }
+
+      return leftValue - rightValue;
+    });
 }
 
 
@@ -124,7 +135,7 @@ function LoadChartTooltip({ active, payload }: LoadChartTooltipProps) {
     <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 text-sm text-slate-100 shadow-lg">
       <p className="font-medium">{timestamp}</p>
       <p className="mt-1 text-slate-300">
-        Average Load: {formatLoadValue(point.value)}
+        Average Load: {formatLoadValue(pointData.load)}
       </p>
       <p className="mt-1 text-xs text-slate-500">
         Combined from {pointData.sampleCount} telemetry reading{pointData.sampleCount !== 1 ? "s" : ""}
@@ -169,7 +180,7 @@ export default function LoadChart({ data }: LoadChartProps) {
 
             <XAxis dataKey="time" />
 
-            <YAxis />
+            <YAxis domain={[0, 100]} />
 
             <Tooltip content={<LoadChartTooltip />} />
 

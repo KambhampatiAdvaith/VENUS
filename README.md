@@ -143,6 +143,9 @@ export ACTIVE_FAULT_WINDOW_MINUTES=10
 python -m uvicorn backend.api.main:app --reload
 ```
 
+`backend.database.init_db` ensures baseline telemetry exists for Substation
+`1..20` by inserting missing baseline rows.
+
 Backend docs:
 
 ```text
@@ -246,6 +249,7 @@ curl http://127.0.0.1:8000/dashboard/metrics
 ```bash
 curl -X POST http://127.0.0.1:8000/predictions/run
 curl http://127.0.0.1:8000/predictions?limit=10
+curl http://127.0.0.1:8000/predictions/latest
 curl http://127.0.0.1:8000/predictions/metrics
 ```
 

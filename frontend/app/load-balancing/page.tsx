@@ -22,7 +22,11 @@ const fallbackTelemetry: TelemetryRecord[] = [];
 function buildLoadChartData(telemetry: TelemetryRecord[]): LoadChartData[] {
   return telemetry
     .slice()
-    .reverse()
+    .sort((left, right) => {
+      const leftTime = Date.parse(left.database_written_at ?? left.timestamp);
+      const rightTime = Date.parse(right.database_written_at ?? right.timestamp);
+      return leftTime - rightTime;
+    })
     .map((item) => ({
       time: formatDisplayTime(item),
       fullTimestamp: formatDisplayTimestamp(item),

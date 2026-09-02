@@ -1,11 +1,15 @@
 type Props = {
   title: string;
   value: string;
+  unitLabel?: string;
+  formulaHint?: string;
 };
 
 export default function MetricCard({
   title,
   value,
+  unitLabel,
+  formulaHint,
 }: Props) {
   let borderColor = "border-slate-700";
   let valueColor = "text-white";
@@ -46,13 +50,21 @@ export default function MetricCard({
         duration-300
       `}
     >
-      <p className="text-slate-400 text-sm font-medium">
+      <p className="text-slate-400 text-sm font-medium" title={formulaHint}>
         {title}
       </p>
 
       <h2 className={`text-4xl font-bold mt-3 ${valueColor}`}>
         {value}
       </h2>
+
+      {(unitLabel || formulaHint) ? (
+        <p className="mt-2 text-xs text-slate-500">
+          {unitLabel ? `Units: ${unitLabel}` : ""}
+          {unitLabel && formulaHint ? " · " : ""}
+          {formulaHint ? `Formula: ${formulaHint}` : ""}
+        </p>
+      ) : null}
     </div>
   );
 }

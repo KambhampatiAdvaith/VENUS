@@ -44,6 +44,20 @@ function getAverage(values: number[]): number {
 }
 
 
+function getVariance(values: number[], baseline: number): number {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const variance = values.reduce(
+    (total, value) => total + (value - baseline) ** 2,
+    0,
+  ) / values.length;
+
+  return roundValue(variance);
+}
+
+
 function getPeakLoad(telemetry: TelemetryRecord[]): number {
   if (telemetry.length === 0) {
     return 0;
@@ -166,6 +180,11 @@ export default async function Analytics() {
 
   const peakLoad = getPeakLoad(telemetry);
   const avgVoltage = getAverage(telemetry.map((item) => item.voltage));
+  const avgTemperature = getAverage(telemetry.map((item) => item.temperature));
+  const voltageVariance = getVariance(
+    telemetry.map((item) => item.voltage),
+    avgVoltage,
+  );
   const efficiency = getEfficiency(nodes);
   const mostCommonFault = getMostCommonFault(faults);
   const mostCommonFaultLabel = getMostCommonFaultLabel(metrics.active_faults);
@@ -217,14 +236,14 @@ export default async function Analytics() {
           subtext={
             telemetryFreshness.isStale
               ? "Analysis data is stale; display will update when new telemetry arrives."
-              : `Analysing ${telemetry.length} telemetry records · updated ${telemetryFreshness.dataAge} ago.`
+              : `Analysing ${telemetry.length} telemetry records · updated ${telemetryFreshness.dataAge} ago · active faults ${metrics.active_faults} vs historical records ${faults.length}.`
           }
           isStale={telemetryFreshness.isStale}
           metrics={[
             { label: "Peak Load", value: `${peakLoad}%` },
             { label: "Avg Voltage", value: `${avgVoltage} V` },
-            { label: "Efficiency", value: `${efficiency}%` },
-            { label: metrics.active_faults > 0 ? "Top Fault" : "Historical Top Fault", value: mostCommonFault },
+            { label: "Avg Temp Baseline", value: `${avgTemperature} °C` },
+            { label: "Healthy Node Ratio", value: `${efficiency}%` },
           ]}
         />
 
@@ -260,7 +279,7 @@ export default async function Analytics() {
 
           <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
             <h3 className="text-slate-400">
-              Node Efficiency
+              Healthy Node Ratio
             </h3>
 
             <p className="text-3xl font-bold mt-2">
@@ -276,7 +295,21 @@ export default async function Analytics() {
             <p className="text-3xl font-bold mt-2">
               {metrics.total_nodes}
             </p>
+
+            <p className="text-slate-500 text-xs mt-2">
+              Seeded baseline assumes Substation 1..20
+            </p>
           </div>
+        </div>
+
+        <div className="mb-8 bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <h2 className="text-xl font-semibold">
+            Grid Baseline Consistency
+          </h2>
+          <p className="text-slate-400 text-sm mt-2">
+            Voltage and temperature metrics are derived from the same latest telemetry batch.
+            Current variance from voltage baseline: {voltageVariance}.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

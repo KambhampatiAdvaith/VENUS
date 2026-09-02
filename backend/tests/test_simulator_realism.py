@@ -13,6 +13,11 @@ from simulator.realism import (
 
 
 class SimulatorRealismTests(unittest.TestCase):
+    def test_substation_count_is_fixed_to_twenty(self) -> None:
+        self.assertEqual(len(SUBSTATION_ORDER), 20)
+        self.assertEqual(SUBSTATION_ORDER[0], "1")
+        self.assertEqual(SUBSTATION_ORDER[-1], "20")
+
     def test_daily_load_curve_peaks_in_evening(self) -> None:
         self.assertLess(get_daily_load_factor(2), get_daily_load_factor(19))
 

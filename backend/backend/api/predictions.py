@@ -45,6 +45,44 @@ def get_predictions(limit: int = Query(default=50, ge=1, le=500)):
     return [serialize_row(row) for row in rows]
 
 
+@router.get("/predictions/latest")
+def get_latest_predictions():
+    engine = get_engine()
+
+    query = """
+        SELECT
+            id,
+            substation,
+            predicted_fault,
+            probability,
+            anomaly,
+            anomaly_score,
+            timestamp
+        FROM (
+            SELECT DISTINCT ON (substation)
+                id,
+                substation,
+                predicted_fault,
+                probability,
+                anomaly,
+                anomaly_score,
+                timestamp
+            FROM predictions
+            ORDER BY substation, timestamp DESC, id DESC
+        ) latest_per_substation
+        ORDER BY
+            CASE
+                WHEN substation ~ '^[0-9]+$' THEN LPAD(substation, 6, '0')
+                ELSE substation
+            END
+    """
+
+    with engine.begin() as connection:
+        rows = connection.execute(text(query)).mappings().all()
+
+    return [serialize_row(row) for row in rows]
+
+
 @router.post("/predictions/run")
 async def run_predictions():
     fault_events = []

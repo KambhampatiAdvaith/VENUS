@@ -2,10 +2,10 @@ import random
 from datetime import datetime, timezone
 
 
-# --- replaced block: generate 25 substations (N01..N25) with deterministic offsets
+# Generate 20 substations (1..20) with deterministic offsets
 SUBSTATION_PROFILES = {}
-for i in range(1, 26):
-    sid = f"N{str(i).zfill(2)}"  # N01, N02, ..., N25
+for i in range(1, 21):
+    sid = str(i)
     # Generate deterministic but varied offsets based on index
     load_offset = ((i % 5) - 2) * 0.9  # values in {-1.8, -0.9, 0.0, 0.9, 1.8}
     voltage_offset = (((i * 7) % 11) - 5) * 0.1  # small voltage offsets
@@ -23,7 +23,6 @@ for i in range(1, 26):
     }
 
 SUBSTATION_ORDER = tuple(SUBSTATION_PROFILES.keys())
-# --- end replaced block
 
 VOLTAGE_CURVE_POINTS = (
     (40.0, 231.0),
