@@ -1,7 +1,10 @@
 import random
 from datetime import datetime, timezone
 
-from simulator.realism import build_substation_telemetry
+from simulator.realism import (
+    SUBSTATION_IDS,
+    build_substation_telemetry,
+)
 
 
 NORMAL_RANGES = {
@@ -21,12 +24,37 @@ FAULT_TYPES = [
 ]
 
 
-def generate_normal_telemetry(substation: str) -> dict:
-    """
-    Generate normal telemetry for one substation.
-    """
-    timestamp = datetime.now(timezone.utc)
-    telemetry = build_substation_telemetry(substation, timestamp)
+def validate_substation(
+    substation: str,
+) -> str:
+
+    substation = str(substation)
+
+    if substation not in SUBSTATION_IDS:
+        raise ValueError(
+            f"Invalid substation '{substation}'. "
+            "Expected Substation 1..20."
+        )
+
+    return substation
+
+
+def generate_normal_telemetry(
+    substation: str,
+) -> dict:
+
+    substation = validate_substation(
+        substation
+    )
+
+    timestamp = datetime.now(
+        timezone.utc
+    )
+
+    telemetry = build_substation_telemetry(
+        substation,
+        timestamp,
+    )
 
     return {
         **telemetry,
@@ -36,44 +64,99 @@ def generate_normal_telemetry(substation: str) -> dict:
     }
 
 
-def inject_fault(telemetry: dict, fault_probability: float = 0.15) -> dict:
-    """
-    Randomly inject a fault into telemetry.
+def inject_fault(
+    telemetry: dict,
+    fault_probability: float = 0.15,
+) -> dict:
 
-    Fault probability of 0.15 means there is a 15% chance
-    that any generated telemetry message contains a fault.
-    """
-
-    should_inject_fault = random.random() < fault_probability
+    should_inject_fault = (
+        random.random()
+        < fault_probability
+    )
 
     if not should_inject_fault:
         return telemetry
 
-    fault_type = random.choice(FAULT_TYPES)
+    fault_type = random.choice(
+        FAULT_TYPES
+    )
 
     telemetry["is_fault"] = True
     telemetry["fault_type"] = fault_type
 
     if fault_type == "temperature_spike":
-        telemetry["temperature"] = round(random.uniform(95, 120), 2)
+
+        telemetry["temperature"] = round(
+            random.uniform(
+                95,
+                120,
+            ),
+            2,
+        )
 
     elif fault_type == "voltage_drop":
-        telemetry["voltage"] = round(random.uniform(160, 200), 2)
+
+        telemetry["voltage"] = round(
+            random.uniform(
+                160,
+                200,
+            ),
+            2,
+        )
 
     elif fault_type == "load_surge":
-        telemetry["load"] = round(random.uniform(85, 105), 2)
-        telemetry["current"] = round(random.uniform(45, 65), 2)
+
+        telemetry["load"] = round(
+            random.uniform(
+                85,
+                105,
+            ),
+            2,
+        )
+
+        telemetry["current"] = round(
+            random.uniform(
+                45,
+                65,
+            ),
+            2,
+        )
 
     elif fault_type == "frequency_deviation":
-        telemetry["frequency"] = round(random.choice([
-            random.uniform(47.5, 49.0),
-            random.uniform(51.0, 52.5),
-        ]), 2)
+
+        telemetry["frequency"] = round(
+            random.choice(
+                [
+                    random.uniform(
+                        47.5,
+                        49.0,
+                    ),
+                    random.uniform(
+                        51.0,
+                        52.5,
+                    ),
+                ]
+            ),
+            2,
+        )
 
     return telemetry
 
 
-def generate_telemetry(substation: str, fault_probability: float = 0.15) -> dict:
-    telemetry = generate_normal_telemetry(substation)
-    telemetry = inject_fault(telemetry, fault_probability)
-    return telemetry
+def generate_telemetry(
+    substation: str,
+    fault_probability: float = 0.15,
+) -> dict:
+
+    substation = validate_substation(
+        substation
+    )
+
+    telemetry = generate_normal_telemetry(
+        substation
+    )
+
+    return inject_fault(
+        telemetry,
+        fault_probability,
+    )
